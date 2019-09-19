@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 def gather_data_from_sim():
     # Sim to throw the data
     data = {}
-    data['B1'] = [random.randint(0, 1) for x in range(200)]
+    data['B1'] = [random.randint(1, 5) for x in range(200)]
     data['B2'] = [random.randint(0, 1) for x in range(200)]
     data['B3'] = [random.randint(0, 1) for x in range(200)]
     data['B4'] = [random.randint(0, 1) for x in range(200)]
@@ -33,7 +33,7 @@ for n in range(0, observations):
             bandit = i
     machine_selected.append(bandit)
     reward = data.values[n, bandit]
-    if reward == 1:
+    if reward >= 1:
         rewards[bandit] = rewards[bandit] + 1
     else:
         penalties[bandit] = penalties[bandit] + 1
