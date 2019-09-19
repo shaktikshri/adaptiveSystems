@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 18 21:02:12 2019
+
+@author: shaktikumar
+"""
+
+
 import random
 import pandas as pd
 import matplotlib.pyplot as plt
