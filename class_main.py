@@ -3,9 +3,9 @@
 """
 Created on Wed Sep 18 21:02:12 2019
 
-@author: shaktikumar
 """
 
+STATES = ['SAFE', 'UNSAFE', 'CRITICAL']
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,6 +16,7 @@ import tabulate
 
 class AdaptiveLearning:
     def __init__(self, versions=None, prior=None):  # Taking in version set and prior as input
+        self.state = STATES[0]
         self.trials = np.zeros((len(versions),), dtype=int)
         self.successes = np.zeros_like(self.trials)
         self.versions = versions
@@ -58,11 +59,6 @@ class AdaptiveLearning:
             times_selected[version_max_beta] += 1
         probabilities = [float(times_selected[version]) / sum(times_selected) for version in range(len(times_selected))]
         return probabilities
-
-
-def sample_beta(success_proportion, num_trials):
-    return [round(num_trials * success_proportion), round(num_trials * (1 - success_proportion))]
-
 
 
 versions = ['survey', 'question', 'returning']
