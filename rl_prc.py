@@ -123,3 +123,12 @@ while True:
         print(u[8:12])
         print("===================================================")
         break
+
+# In[]:
+# Plotting the utility value convergence of each state
+import matplotlib.pyplot as plt
+for state in range(tot_states):
+    utility_vals_history = [el[state] for el in graph_list]
+    plt.plot(utility_vals_history, label='state'+str(state))
+plt.legend()
+plt.show()
