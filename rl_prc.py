@@ -98,6 +98,14 @@ r = np.array([-0.04, -0.04, -0.04, +1.0,
 u1 = np.array([0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.0
 ])
+
+# In[]:
+
+# The Value Iteration Algorithm
+# You only need to define the initial transition probabilities wrt each action
+# and wrt each state to state, and the rewards for each state.
+# The utilities and everything else will be learnt
+# from here
 while True:
     delta = 0
     u = u1.copy()
@@ -118,6 +126,7 @@ while True:
         print("Gamma: " + str(gamma))
         print("Epsilon: " + str(epsilon))
         print("===================================================")
+        print('Utility Values')
         print(u[0:4])
         print(u[4:8])
         print(u[8:12])
