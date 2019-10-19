@@ -71,3 +71,24 @@ plt.xlabel('Bandits')
 plt.xticks(range(0, 5))
 plt.ylabel('No. Of Times Each Bandit Was Selected')
 plt.show()
+
+import numpy as np
+from scipy.stats import beta
+import matplotlib.pyplot as plt
+import matplotlib.axis as axes
+a, b = 5, 10
+plt.figure(1)
+x = np.linspace(0, 1, num=100)
+y = beta.pdf(x, a, b)
+plt.ion()
+plt.ylim(0, 10)
+fig, = plt.plot(x, y, 'r-')
+for i in range(50):
+    a = a + 1
+    b = b + 1
+    x = np.linspace(0, 1, num=100)
+    y = beta.pdf(x, a, b)
+    fig.set_data(x, y)
+    plt.draw()
+    plt.pause(0.1)
+plt.show()
