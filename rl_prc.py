@@ -27,6 +27,12 @@ for i in [1,2,3,4,5]:
 # thus this Markov process has converged.
 
 # In[]:
+# there are 12 states, thus the transition matrix should be a 12*12 matrix giving
+# the transition prob. from each state to every other state
+# Now there are 4 actions also, thus the transition matrix should have this also since
+# the prob. of moving to other state is a function of T(s,s',a).
+# Thus the transition prob will be a 12*12*4 matrix, where each T[:,:,0] is the transition
+# matrix for action 0, and so on.
 T = np.load('T.npy')
 NUM_ACTIONS = 4
 
@@ -64,5 +70,56 @@ def return_state_utility(v, T, u, reward, gamma):
 
 # In[]:
 
+
 utility_11 = return_state_utility(v, T, u, reward, gamma)
-print('Utility of state (1,1) = ',utility_11)
+print('Utility of state (1,1) = ', utility_11)
+
+# In[]:
+# The Value iteration algorithm to compute the utility vector
+
+tot_states = 12
+
+# Discount Factor
+gamma = 0.999
+iteration = 0
+
+#Stopping criteria small value
+epsilon = 0.001
+
+# List containing the data for each iteation
+graph_list = list()
+
+#Reward vector, note the +1 and -1 for the charging station and the stairs
+r = np.array([-0.04, -0.04, -0.04, +1.0,
+    -0.04, 0.0, -0.04, -1.0, -0.04, -0.04, -0.04, -0.04
+])
+
+# Initial Utility vectors
+u1 = np.array([0.0, 0.0, 0.0, 0.0,
+    0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.0,  0.0
+])
+while True:
+    delta = 0
+    u = u1.copy()
+    iteration += 1
+    graph_list.append(u)
+
+    for state in range(tot_states):
+        reward = r[state]
+        state_vector = np.zeros((1, tot_states))
+        state_vector[0, state] = 1
+        u1[state] = return_state_utility(state_vector, T, u, reward, gamma)
+        delta = max(delta, np.abs(u1[state] - u[state]))
+
+    if delta < epsilon * (1-gamma) / gamma:
+        print("=================== FINAL RESULT ==================")
+        print("Iterations: " + str(iteration))
+        print("Delta: " + str(delta))
+        print("Gamma: " + str(gamma))
+        print("Epsilon: " + str(epsilon))
+        print("===================================================")
+        print(u[0:4])
+        print(u[4:8])
+        print(u[8:12])
+        print("===================================================")
+        break
