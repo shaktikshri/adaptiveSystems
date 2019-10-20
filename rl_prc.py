@@ -193,3 +193,27 @@ def return_expected_action(u, T, v):
         actions_array[action] = np.sum(np.multiply(u, np.dot(v, T[:,:,action])))
     return np.argmax(actions_array)
 
+
+def print_policy(p, shape):
+    """Printing utility.
+
+    Print the policy actions using symbols:
+    ^, v, <, > up, down, left, right
+    * terminal states
+    # obstacles
+    """
+    counter = 0
+    policy_string = ""
+    for row in range(shape[0]):
+        for col in range(shape[1]):
+            if(p[counter] == -1): policy_string += " *  "
+            elif(p[counter] == 0): policy_string += " ^  "
+            elif(p[counter] == 1): policy_string += " <  "
+            elif(p[counter] == 2): policy_string += " v  "
+            elif(p[counter] == 3): policy_string += " >  "
+            elif(np.isnan(p[counter])): policy_string += " #  "
+            counter += 1
+        policy_string += '\n'
+    print(policy_string)
+
+
