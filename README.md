@@ -1,5 +1,4 @@
 # adaptiveSystems
-CIRL/MAB Research. Proactive Troubleshooting Topic [2018-Present]
 
 Description available at <http://cs.toronto.edu/~shaktik/> under Proactive Troubleshooting [Aug2018-Present]
 
