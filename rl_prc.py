@@ -155,7 +155,8 @@ plt.show()
 # of each state. What we still miss is a way to estimate an optimal policy.
 
 def return_policy_evaluation(policy, u, r, T, gamma):
-    """Return the policy utility.
+    """Return the policy utility, i.e. wrt the action which the given policy chose, what is the utility
+    of each of the states, (not just one state as as done in return_state_utility)
 
     @param policy policy vector
     @param u utility vector
@@ -175,4 +176,20 @@ def return_policy_evaluation(policy, u, r, T, gamma):
             u[state] = r[state] + gamma * np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
     return u
 
+
+def return_expected_action(u, T, v):
+    """Return the expected action.
+
+    It returns an action based on the expected utility of doing a in state s,
+    according to T and u. This action is the one that maximize the expected utility.
+    @param u utility vector
+    @param T transition matrix
+    @param v starting vector
+    @return expected action (int)
+    """
+    actions_array = np.zeros(NUM_ACTIONS)
+    for action in range(NUM_ACTIONS):
+        # Expected utility of doing action a in state s, according to T and u.
+        actions_array[action] = np.sum(np.multiply(u, np.dot(v, T[:,:,action])))
+    return np.argmax(actions_array)
 
