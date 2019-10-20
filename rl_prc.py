@@ -154,7 +154,7 @@ plt.show()
 # In[]:
 # With the value iteration algorithm we have a way to estimate the utility
 # of each state. What we still miss is a way to estimate an optimal policy.
-
+import numpy as np
 def return_policy_evaluation(policy, u, r, T, gamma):
     """Return the policy utility, i.e. wrt the action which the given policy chose, what is the utility
     of each of the states, (not just one state as as done in return_state_utility)
@@ -223,6 +223,7 @@ def print_policy(p, shape):
 gamma = 0.999
 epsilon = 0.0001
 iteration = 0
+tot_states = 12
 T = np.load("T.npy")
 
 # Generate the first policy randomly
@@ -246,19 +247,20 @@ r = np.array([-0.04, -0.04, -0.04,  +1.0,
 
 while True:
     iteration += 1
-    u1 = u.copy()
+    u1 = np.copy(u)
     # 1- Policy evaluation
-    u = return_policy_evaluation(p, u1, r, T, gamma)
+    u = return_policy_evaluation(p, u, r, T, gamma)
     delta = np.max(np.abs(u - u1))
     if delta < epsilon * (1-gamma) / gamma:
+        print(delta)
         break
 
+    # 2- Policy improvement
     for s in range(tot_states):
         if not np.isnan(p[s]) and not p[s] == -1:
             # p[s] != -1 check to confirm the state is not terminal
             v = np.zeros((1, tot_states))
             v[0, s] = 1
-            # 2- Policy improvement
             a = return_expected_action(u, T, v)
             if a != p[s]:
                 p[s] = a
@@ -275,3 +277,9 @@ print(u[8:12])
 print("===================================================")
 print_policy(p, shape=(3, 4))
 print("===================================================")
+
+
+# Policy iteration and value iteration, which is best?
+# If you have many actions or you start from a fair policy then choose policy iteration.
+# If you have few actions and the transition is acyclic then chose value iteration.
+# If you want the best from the two world then give a look to the modified policy iteration algorithm.
