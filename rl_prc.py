@@ -1,5 +1,6 @@
 import numpy as np
 
+# In[]:
 T = np.array([
     [0.9, 0.1],
     [0.5, 0.5]
@@ -190,7 +191,7 @@ def return_expected_action(u, T, v):
     actions_array = np.zeros(NUM_ACTIONS)
     for action in range(NUM_ACTIONS):
         # Expected utility of doing action a in state s, according to T and u.
-        actions_array[action] = np.sum(np.multiply(u, np.dot(v, T[:,:,action])))
+        actions_array[action] = np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
     return np.argmax(actions_array)
 
 
@@ -216,4 +217,61 @@ def print_policy(p, shape):
         policy_string += '\n'
     print(policy_string)
 
+# In[]:
 
+# The next blocks are the implementation of the policy iteration algorithm
+gamma = 0.999
+epsilon = 0.0001
+iteration = 0
+T = np.load("T.npy")
+
+# Generate the first policy randomly
+# NaN=Nothing, -1=Terminal, 0=Up, 1=Left, 2=Down, 3=Right
+p = np.random.randint(0, 4, size=(tot_states)).astype(np.float32)
+p[5] = np.NaN
+# 3 and 7 are the terminal states, no action can be taken there.
+# 3 is the charging station, and 7 is the staircase
+p[3] = p[7] = -1
+
+# Utility vectors
+u = np.array([0.0, 0.0, 0.0,  0.0,
+              0.0, 0.0, 0.0,  0.0,
+              0.0, 0.0, 0.0,  0.0])
+# Reward vector
+r = np.array([-0.04, -0.04, -0.04,  +1.0,
+              -0.04,   0.0, -0.04,  -1.0,
+              -0.04, -0.04, -0.04, -0.04])
+
+# In[]:
+
+while True:
+    iteration += 1
+    u1 = u.copy()
+    # 1- Policy evaluation
+    u = return_policy_evaluation(p, u1, r, T, gamma)
+    delta = np.max(np.abs(u - u1))
+    if delta < epsilon * (1-gamma) / gamma:
+        break
+
+    for s in range(tot_states):
+        if not np.isnan(p[s]) and not p[s] == -1:
+            # p[s] != -1 check to confirm the state is not terminal
+            v = np.zeros((1, tot_states))
+            v[0, s] = 1
+            # 2- Policy improvement
+            a = return_expected_action(u, T, v)
+            if a != p[s]:
+                p[s] = a
+print_policy(p, shape=(3, 4))
+print("=================== FINAL RESULT ==================")
+print("Iterations: " + str(iteration))
+print("Delta: " + str(delta))
+print("Gamma: " + str(gamma))
+print("Epsilon: " + str(epsilon))
+print("===================================================")
+print(u[0:4])
+print(u[4:8])
+print(u[8:12])
+print("===================================================")
+print_policy(p, shape=(3, 4))
+print("===================================================")
