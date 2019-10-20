@@ -55,7 +55,9 @@ gamma = 1
 
 
 def return_state_utility(v, T, u, reward, gamma):
-    """Return the state utility.
+    """Return the state utility. Computes the best action to be taken in each state
+    and returns the state utility if that action is taken. Note that there is no policy
+    defined here. # TODO : Why is there no policy defined here??
     @param v the state vector
     @param T transition matrix
     @param u utility vector
@@ -65,8 +67,13 @@ def return_state_utility(v, T, u, reward, gamma):
     """
     action_array = np.zeros(NUM_ACTIONS)
     for action in range(NUM_ACTIONS):
+        #     This bellman equation is basically calculating the utilities, and whichever neighbor
+        #     utility is highest, its picking that up and assigning the utility of the current state
         action_array[action] = np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
+
+    # With max oper, its just picking up the action with the highest utility
     return reward + gamma * np.max(action_array)
+
 
 # In[]:
 
@@ -141,3 +148,31 @@ for state in range(tot_states):
     plt.plot(utility_vals_history, label='state'+str(state))
 plt.legend()
 plt.show()
+
+
+# In[]:
+# With the value iteration algorithm we have a way to estimate the utility
+# of each state. What we still miss is a way to estimate an optimal policy.
+
+def return_policy_evaluation(policy, u, r, T, gamma):
+    """Return the policy utility.
+
+    @param policy policy vector
+    @param u utility vector
+    @param r reward vector
+    @param T transition matrix
+    @param gamma discount factor
+    @return the utility vector u
+    """
+    for state in range(tot_states):
+        if not np.isnan(policy[state]):
+            v = np.zeros((1, tot_states))
+            v[0, state] = 1
+            action = int(policy[state])
+            # Since we have a policy and the policy associate to each state an action,
+            # we can get rid of the max operator and use a simplified version of the
+            # Bellman equation without the max operator
+            u[state] = r[state] + gamma * np.sum(np.multiply(u, np.dot(v, T[:, :, action])))
+    return u
+
+
