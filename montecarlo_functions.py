@@ -21,7 +21,13 @@ reward[1, 3] = -1
 reward[0, 3] = 1
 
 # For each one of the four actions there is a probability, 0th index is UP, 1: RIGHT, 2:DOWN, 3:LEFT
-# TODO : Check the significance of this
+# each row is probabilities for next action given the current action,
+# row0 is prob. for next actions given current action is UP
+# row1 is prob. for next actions given current action is RIGHT
+# row2 is prob. for next actions given current action is DOWN
+# row3 is prob. for next actions given current action is LEFT
+# Thus its basically the prob. of taking the initial actions.
+# TODO : Should check if this also forms part of learning in model-free RL
 transition_matrix = np.array([
     [0.8, 0.1, 0.0, 0.1],
     [0.1, 0.8, 0.1, 0.0],
@@ -49,3 +55,9 @@ observation = env.reset()
 env.render()
 
 # In[]:
+# Now we can run an episode using a for loop:
+for _ in range(1000):
+    action = policy_matrix[observation[0], observation[1]]
+    # Now the robot should move one step in the world based on the action given.
+    # The action can be 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT
+    observation, reward, done = env.step(action)
