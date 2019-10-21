@@ -147,6 +147,8 @@ class GridWorld:
 
         #Based on the current action and the probability derived
         #from the trasition model it chooses a new actio to perform
+        # Generate a non uniform random sample from np.arange(4) of size=1 where probabilities of
+        # elements of np.arrange(4) is given by the elements of transition_matrix
         action = np.random.choice(4, 1, p=self.transition_matrix[int(action),:])
         #action = self.transition_model(action)
 
