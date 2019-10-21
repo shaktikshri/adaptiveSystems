@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 
+# In[]:
 # Defining 2 random distributions with sample size 10
 # Gaussian distributed data with mean = 2 and var = 1
 Nx = 10
@@ -9,7 +10,7 @@ x = np.random.randn(Nx) + 2
 Ny = 10
 y = np.random.randn(Ny)
 
-# Calculate the variance to get the standard deviation
+# In[]:
 
 # Calculate the std dev now
 # ddof : int, optional
@@ -18,18 +19,19 @@ y = np.random.randn(Ny)
 var_x = x.var(ddof=1)
 var_y = y.var(ddof=1)
 
+# In[]:
 # Calculate the t-statistics
 t = (x.mean() - y.mean()) / (np.sqrt( (var_x/Nx) + (var_y/Ny) ))
 
 # In[]:
 # Compare with the critical t-value
+
 # Degrees of freedom
 df = Nx + Ny - 2
-
 # p-value after comparison with the t
 p = 1 - stats.t.cdf(t,df=df)
 
-
+# In[]:
 print("t = " + str(t))
 print("p = " + str(2*p))
 ### You can see that after comparing the t statistic with the critical t value (computed internally) we get a good p value of 0.0005 and thus we reject the null hypothesis and thus it proves that the mean of the two distributions are different and statistically significant.
