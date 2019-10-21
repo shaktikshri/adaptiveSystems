@@ -1,5 +1,9 @@
+# In[]:
+
 import numpy as np
 from gridworld import GridWorld
+
+# In[]:
 
 env = GridWorld(3, 4)
 state_matrix = np.zeros((3,4))
@@ -43,3 +47,5 @@ env.setTransitionMatrix(transition_matrix)
 observation = env.reset()
 # Print the current world in the terminal.
 env.render()
+
+# In[]:
