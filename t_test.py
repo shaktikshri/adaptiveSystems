@@ -34,10 +34,11 @@ p = 1 - stats.t.cdf(t,df=df)
 # In[]:
 print("t = " + str(t))
 print("p = " + str(2*p))
-### You can see that after comparing the t statistic with the critical t value (computed internally) we get a good p value of 0.0005 and thus we reject the null hypothesis and thus it proves that the mean of the two distributions are different and statistically significant.
+# You can see that after comparing the t statistic with the critical t value (computed internally)
+# we get a good p value of 0.0005 and thus we reject the null hypothesis and thus it proves that
+# the mean of the two distributions are different and statistically significant.
 
-
-## Cross Checking with the internal scipy function
-t2, p2 = stats.ttest_ind(a,b)
+# Cross Checking with the internal scipy function, this is a 2tailed p value
+t2, p2 = stats.ttest_ind(x, y)
 print("t = " + str(t2))
 print("p = " + str(p2))
