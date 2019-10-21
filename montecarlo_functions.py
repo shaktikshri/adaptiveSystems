@@ -31,3 +31,8 @@ policy_matrix = np.array([
     [0,np.NaN, 0, -1],
     [0, 3, 3, 3]
 ])
+
+# Set the matrices now
+env.setStateMatrix(state_matrix)
+env.setRewardMatrix(reward)
+env.setTransitionMatrix(transition_matrix)
