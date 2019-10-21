@@ -61,3 +61,12 @@ for _ in range(1000):
     # Now the robot should move one step in the world based on the action given.
     # The action can be 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT
     observation, reward, done = env.step(action)
+    # done is True if the current state is a terminal state, i.e. either the charging station
+    # or the staircase. (Note that the invalid state cannot be the terminal state)
+    print("")
+    print("ACTION: " + str(action))
+    print("REWARD: " + str(reward))
+    print("DONE: " + str(done))
+    env.render()
+    if done:
+        break
