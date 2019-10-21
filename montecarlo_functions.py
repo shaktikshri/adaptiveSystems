@@ -17,6 +17,7 @@ reward[1, 3] = -1
 reward[0, 3] = 1
 
 # For each one of the four actions there is a probability, 0th index is UP, 1: RIGHT, 2:DOWN, 3:LEFT
+# TODO : Check the significance of this
 transition_matrix = np.array([
     [0.8, 0.1, 0.0, 0.1],
     [0.1, 0.8, 0.1, 0.0],
@@ -36,3 +37,9 @@ policy_matrix = np.array([
 env.setStateMatrix(state_matrix)
 env.setRewardMatrix(reward)
 env.setTransitionMatrix(transition_matrix)
+
+# Set the position of the robot in the bottom left corner.
+# and return the first observation
+observation = env.reset()
+# Print the current world in the terminal.
+env.render()
