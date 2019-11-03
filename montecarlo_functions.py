@@ -158,5 +158,18 @@ def get_return(state_list, gamma):
 
 
 def update_policy(episode_list, policy_matrix, state_action_matrix):
+    """
+    Updates the policy in a greedy way, selecting actions which have the highest
+    utility for each state visited in the episode_list
+    :param episode_list: the tuples of states visited as (observation, state, reward)
+    :param policy_matrix: the policy matrix
+    :param state_action_matrix: the Q matrix
+    :return:
+    """
     for visit in episode_list:
         observation = visit[0]
+        column = observation[1] + observation[0] * 4
+        if policy_matrix[observation[0], observation[1]] != -1:
+            # if its not the terminal state
+            policy_matrix[observation[0], observation[1]] = np.argmax(state_action_matrix[:, column])
+    return policy_matrix
