@@ -144,7 +144,7 @@ print(utility_matrix / running_mean_matrix)
 
 def get_return(state_list, gamma):
     """
-    :param state_list: a list of tuples (state, observation, reward)
+    :param state_list: a list of tuples (observation, state, reward)
     :param gamma: the discount factor
     :return: the return value for that state_list
     """
@@ -156,3 +156,7 @@ def get_return(state_list, gamma):
         counter += 1
     return return_value
 
+
+def update_policy(episode_list, policy_matrix, state_action_matrix):
+    for visit in episode_list:
+        observation = visit[0]
