@@ -73,3 +73,19 @@ for _ in range(1000):
     env.render()
     if done:
         break
+
+
+def get_return(state_list, gamma):
+    """
+    :param state_list: a list of tuples (state, reward)
+    :param gamma: the discount factor
+    :return: the return value for that state_list
+    """
+    return_value = 0
+    counter = 0
+    for visit in state_list:
+        reward = visit[1]
+        return_value += reward * np.power(gamma, counter)
+        counter += 1
+    return return_value
+
