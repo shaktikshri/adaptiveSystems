@@ -182,6 +182,7 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((4, 12))
 # one row of all states for each action, thus 12 columns for each row
+from rl_prc import print_policy
 n_epochs = 50000
 for epoch in range(n_epochs):
     episode_list = list()
@@ -226,7 +227,7 @@ for epoch in range(n_epochs):
         print(state_action_matrix / running_mean_matrix)
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
-        print_policy(policy_matrix)
+        print_policy(policy_matrix, (3,4))
 
 print("Utility matrix after " + str(n_epochs) + " iterations:")
 print(state_action_matrix / running_mean_matrix)
