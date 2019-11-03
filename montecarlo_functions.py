@@ -141,6 +141,8 @@ print(utility_matrix / running_mean_matrix)
 # finding out utility of each (action, state) pair. Once we have found Q,
 # the action at each state would simply be action(s) = argmax(a) Q(s, a) i.e.
 # take the action that maximizes the utility of that state
+gamma = 0.9
+print_epoch = 10000
 
 def get_return(state_list, gamma):
     """
@@ -165,17 +167,15 @@ def print_policy(p, shape):
     * terminal states
     # obstacles
     """
-    counter = 0
     policy_string = ""
     for row in range(shape[0]):
         for col in range(shape[1]):
-            if(p[counter] == -1): policy_string += " *  "
-            elif(p[counter] == 0): policy_string += " ^  "
-            elif(p[counter] == 1): policy_string += " <  "
-            elif(p[counter] == 2): policy_string += " v  "
-            elif(p[counter] == 3): policy_string += " >  "
-            elif(np.isnan(p[counter])): policy_string += " #  "
-            counter += 1
+            if(p[row][col] == -1): policy_string += " *  "
+            elif(p[row][col] == 0): policy_string += " ^  "
+            elif(p[row][col] == 1): policy_string += " <  "
+            elif(p[row][col] == 2): policy_string += " v  "
+            elif(p[row][col] == 3): policy_string += " >  "
+            elif(np.isnan(p[row][col])): policy_string += " #  "
         policy_string += '\n'
     print(policy_string)
 
@@ -204,6 +204,7 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((4, 12))
+running_mean_matrix = np.full((4, 12), 1.0e-12)
 # one row of all states for each action, thus 12 columns for each row
 n_epochs = 50000
 for epoch in range(n_epochs):
@@ -235,7 +236,7 @@ for epoch in range(n_epochs):
         observation = visit[0]
         action = visit[1]
         column = observation[1] + observation[0] * 4
-        row = action
+        row = int(action)
         if first_visit_done[row, column] == 0:
             return_value = get_return(episode_list[counter:], gamma)
             running_mean_matrix[row, column] += 1
