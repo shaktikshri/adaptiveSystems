@@ -74,6 +74,12 @@ for _ in range(1000):
     if done:
         break
 
+# In[]:
+# In this section we are going to use the Monte Carlo for Prediction, thus
+# to find the value/utility function. This means that we already have the
+# transition function with us, and we only need to estimate the values of the
+# states now
+
 
 def get_return(state_list, gamma):
     """
@@ -117,7 +123,7 @@ for epoch in range(n_epochs):
         if first_visit_done[row, column] == 0:
             return_value = get_return(episode[counter:], gamma)
             running_mean_matrix[row, column] += 1
-            utility_matrix[row, column] += reward
+            utility_matrix[row, column] += return_value
             first_visit_done[row, column] = 1
         counter += 1
     if epoch % print_epoch == 0:
