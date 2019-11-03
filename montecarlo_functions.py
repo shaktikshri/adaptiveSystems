@@ -142,3 +142,17 @@ print(utility_matrix / running_mean_matrix)
 # the action at each state would simply be action(s) = argmax(a) Q(s, a) i.e.
 # take the action that maximizes the utility of that state
 
+def get_return(state_list, gamma):
+    """
+    :param state_list: a list of tuples (state, observation, reward)
+    :param gamma: the discount factor
+    :return: the return value for that state_list
+    """
+    return_value = 0
+    counter = 0
+    for visit in state_list:
+        reward = visit[2]
+        return_value += reward * np.power(gamma, counter)
+        counter += 1
+    return return_value
+
