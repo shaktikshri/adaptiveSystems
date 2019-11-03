@@ -182,3 +182,52 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((4, 12))
 # one row of all states for each action, thus 12 columns for each row
+n_epochs = 50000
+for epoch in range(n_epochs):
+    episode_list = list()
+    observation = env.reset(exploring_starts=True)
+    is_starting = True
+    # length of each episode is 1000
+    for _ in range(1000):
+        action = policy_matrix[observation[0], observation[1]]
+        # If the episode just started then it is
+        # necessary to choose a random action (exploring starts)
+        if is_starting:
+            action = np.random.randint(0, 4)
+            is_starting = False
+        # Move one step and get a new observation and the reward
+        new_observation, reward, done = env.step(action)
+        episode_list.append((observation, action, reward))
+        observation = new_observation
+        if done:
+            break
+    # This cycle is the implementation of First-Visit MC.
+    first_visit_done = np.zeros((4, 12))
+    counter = 0
+    # For each state-action stored in the episode list it checks if
+    # it is the first visit and then estimates the return.
+    # This is the Evaluation step of the GPI.
+    for visit in episode_list:
+        observation = visit[0]
+        action = visit[1]
+        column = observation[1] + observation[0] * 4
+        row = action
+        if first_visit_done[row, column] == 0:
+            return_value = get_return(episode_list[counter:], gamma)
+            running_mean_matrix[row, column] += 1
+            state_action_matrix[row, column] += return_value
+            first_visit_done[row, column] = 1
+        counter += 1
+    # Policy update (Improvement)
+    policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
+
+    if epoch % print_epoch == 0:
+        print("State-Action matrix after " + str(epoch) + " iterations:")
+        print(state_action_matrix / running_mean_matrix)
+        print("Policy matrix after " + str(epoch + 1) + " iterations:")
+        print(policy_matrix)
+        print_policy(policy_matrix)
+
+print("Utility matrix after " + str(n_epochs) + " iterations:")
+print(state_action_matrix / running_mean_matrix)
+
