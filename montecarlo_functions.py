@@ -173,3 +173,12 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
             # if its not the terminal state
             policy_matrix[observation[0], observation[1]] = np.argmax(state_action_matrix[:, column])
     return policy_matrix
+
+# Random policy matrix
+policy_matrix = np.random.randint(low=0, high=4, size=(3, 4)).astype(np.float32)
+policy_matrix[1, 1] = np.NaN  # NaN for the obstacle at (1,1)
+policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
+
+# State-action matrix or the Q values (init to zeros or to random values)
+state_action_matrix = np.random.random_sample((4, 12))
+# one row of all states for each action, thus 12 columns for each row
