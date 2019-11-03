@@ -132,3 +132,13 @@ for epoch in range(n_epochs):
 
 print('Utility matrix after ' + str(n_epochs) + " iterations : ")
 print(utility_matrix / running_mean_matrix)
+
+# In[]:
+# Until now we used the function called the utility function (aka value function,
+# state-value function) as a way to estimate the utility (value) of a state. We
+# still havent found a way to get the optimal policy
+# Thus the next section is MC for control. Its estimating the Q(s,a) function or
+# finding out utility of each (action, state) pair. Once we have found Q,
+# the action at each state would simply be action(s) = argmax(a) Q(s, a) i.e.
+# take the action that maximizes the utility of that state
+
