@@ -157,6 +157,29 @@ def get_return(state_list, gamma):
     return return_value
 
 
+def print_policy(p, shape):
+    """Printing utility.
+
+    Print the policy actions using symbols:
+    ^, v, <, > up, down, left, right
+    * terminal states
+    # obstacles
+    """
+    counter = 0
+    policy_string = ""
+    for row in range(shape[0]):
+        for col in range(shape[1]):
+            if(p[counter] == -1): policy_string += " *  "
+            elif(p[counter] == 0): policy_string += " ^  "
+            elif(p[counter] == 1): policy_string += " <  "
+            elif(p[counter] == 2): policy_string += " v  "
+            elif(p[counter] == 3): policy_string += " >  "
+            elif(np.isnan(p[counter])): policy_string += " #  "
+            counter += 1
+        policy_string += '\n'
+    print(policy_string)
+
+
 def update_policy(episode_list, policy_matrix, state_action_matrix):
     """
     Updates the policy in a greedy way, selecting actions which have the highest
@@ -182,7 +205,6 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((4, 12))
 # one row of all states for each action, thus 12 columns for each row
-from rl_prc import print_policy
 n_epochs = 50000
 for epoch in range(n_epochs):
     episode_list = list()
