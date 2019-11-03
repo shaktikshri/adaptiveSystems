@@ -193,6 +193,7 @@ for epoch in range(n_epochs):
         action = policy_matrix[observation[0], observation[1]]
         # If the episode just started then it is
         # necessary to choose a random action (exploring starts)
+        # This condition assures to satisfy the exploring starts. T
         if is_starting:
             action = np.random.randint(0, 4)
             is_starting = False
