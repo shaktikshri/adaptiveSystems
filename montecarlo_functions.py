@@ -89,3 +89,40 @@ def get_return(state_list, gamma):
         counter += 1
     return return_value
 
+
+# We are going to use the function get_return in the following loop in order
+# to get the returns for each episode and estimate the utilities/value function
+utility_matrix = np.zeros((3, 4))
+running_mean_matrix = np.full((3,4), 1.0e-10)
+gamma = 1
+n_epochs = 50000
+print_epoch = 1000
+
+for epoch in range(n_epochs):
+    episode = list()
+    observation = env.reset(exploring_starts=False)
+    for _ in range(1000):
+        action = policy_matrix[observation[0], observation[1]]
+        observation, reward, done = env.step(action=action)
+        episode.append((observation, reward))
+        if done:
+            break
+    first_visit_done = np.zeros((3,4))
+    counter = 0
+    for visit in episode:
+        observation = visit[0]
+        reward = visit[1]
+        row = observation[0]
+        column = observation[1]
+        if first_visit_done[row, column] == 0:
+            return_value = get_return(episode[counter:], gamma)
+            running_mean_matrix[row, column] += 1
+            utility_matrix[row, column] += reward
+            first_visit_done[row, column] = 1
+        counter += 1
+    if epoch % print_epoch == 0:
+        print('Utility matrix after '+str(epoch)+" iterations : ")
+        print(utility_matrix / running_mean_matrix)
+
+print('Utility matrix after ' + str(n_epochs) + " iterations : ")
+print(utility_matrix / running_mean_matrix)
