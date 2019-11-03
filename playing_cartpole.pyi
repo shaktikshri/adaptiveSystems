@@ -72,20 +72,24 @@ def play_multiple_episode(env, T, params):
 
 def random_search(env):
     episode_lengths = []
-    best = 10000
+    best = 0
     params = None
-    for t in range(200):
+    for t in range(100):
         print('Epoch : ', t)
         new_params = np.random.random(4)*2 -1
         avg_length = play_multiple_episode(env, 1000, new_params)
         episode_lengths.append(avg_length)
 
-        if avg_length < best:
+        # we want to pick the params which made the episode as long as possible
+        # that means the game didnt end for a long time because the pole never fell down
+        # for the entire episode
+        if avg_length > best:
             best = avg_length
             params = new_params
 
     return episode_lengths, params
 
+# In[]:
 
 if __name__ == '__main__':
     env = gym.make('CartPole-v0')
@@ -95,5 +99,8 @@ if __name__ == '__main__':
 
     # now play the final episode with final weights
     # the weights are some parameters for the policy function
-    print('Final episode with final weights')
-    play_multiple_episode(env, 100, params)
+    print('Final one final episode with final weights')
+    from gym import wrappers
+    env = wrappers.Monitor(env, 'episode_shakti')
+    play_one_episode(env, params)
+    env.close()
