@@ -49,13 +49,16 @@ env.setRewardMatrix(reward)
 env.setTransitionMatrix(transition_matrix)
 
 # Set the position of the robot in the bottom left corner.
-# and return the first observation
+# and return the first observation.
+# Observation is the current row and column, hence the current state
 observation = env.reset()
 # Print the current world in the terminal.
 env.render()
 
 # In[]:
 # Now we can run an episode using a for loop:
+# This is just playing an episode,
+# there is no learning here since the transition matrix was defined already
 for _ in range(1000):
     action = policy_matrix[observation[0], observation[1]]
     # Now the robot should move one step in the world based on the action given.
