@@ -197,6 +197,7 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
             policy_matrix[observation[0], observation[1]] = np.argmax(state_action_matrix[:, column])
     return policy_matrix
 
+
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=4, size=(3, 4)).astype(np.float32)
 policy_matrix[1, 1] = np.NaN  # NaN for the obstacle at (1,1)
@@ -210,6 +211,7 @@ n_epochs = 50000
 for epoch in range(n_epochs):
     episode_list = list()
     observation = env.reset(exploring_starts=True)
+    # observation is the [row,col] of the current position
     is_starting = True
     # length of each episode is 1000
     for _ in range(1000):
