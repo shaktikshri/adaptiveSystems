@@ -37,6 +37,7 @@ transition_matrix = np.array([
 
 # Define the policy matrix
 # 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT, NaN=Obstacle, -1=NoAction
+# This is the best policy that the robot can follow
 policy_matrix = np.array([
     [1, 1, 1, -1],
     [0,np.NaN, 0, -1],
@@ -172,9 +173,9 @@ def print_policy(p, shape):
         for col in range(shape[1]):
             if(p[row][col] == -1): policy_string += " *  "
             elif(p[row][col] == 0): policy_string += " ^  "
-            elif(p[row][col] == 1): policy_string += " <  "
+            elif(p[row][col] == 1): policy_string += " >  "
             elif(p[row][col] == 2): policy_string += " v  "
-            elif(p[row][col] == 3): policy_string += " >  "
+            elif(p[row][col] == 3): policy_string += " <  "
             elif(np.isnan(p[row][col])): policy_string += " #  "
         policy_string += '\n'
     print(policy_string)
@@ -207,7 +208,7 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 state_action_matrix = np.random.random_sample((4, 12))
 running_mean_matrix = np.full((4, 12), 1.0e-12)
 # one row of all states for each action, thus 12 columns for each row
-n_epochs = 50000
+n_epochs = 500000
 for epoch in range(n_epochs):
     episode_list = list()
     observation = env.reset(exploring_starts=True)
