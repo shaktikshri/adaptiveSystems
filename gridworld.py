@@ -149,7 +149,11 @@ class GridWorld:
         #from the trasition model it chooses a new actio to perform
         # Generate a non uniform random sample from np.arange(4) of size=1 where probabilities of
         # elements of np.arrange(4) is given by the elements of transition_matrix
+        # TODO : Check if this line is significant
+        # TODO : for MC for control, the transition matrix will not be given, hence this line
+        # TODO : doesnt make any sense
         action = np.random.choice(4, 1, p=self.transition_matrix[int(action),:])
+
         #action = self.transition_model(action)
 
         #Generating a new position based on the current position and action
