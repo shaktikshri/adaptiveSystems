@@ -22,12 +22,15 @@ def get_return(state_list, gamma):
 
 
 def print_policy(p, shape):
-    """Printing utility.
-
+    """
+    Printing utility
     Print the policy actions using symbols:
     ^, v, <, > up, down, left, right
     * terminal states
     # obstacles
+    :param p: the policy matrix
+    :param shape: the shape of the matrix
+    :return: None
     """
     policy_string = ""
     for row in range(shape[0]):
@@ -64,12 +67,14 @@ def generalized_policy_iteration(policy_matrix, env, gamma, running_mean_matrix,
                                  state_action_matrix, n_epochs, print_epoch):
     for epoch in range(n_epochs):
         episode_list = list()
-        observation = env.reset(exploring_starts=True)
+        observation = env.reset(exploring_starts=False)
         # observation is the [row,col] of the current position
         is_starting = True
         # length of each episode is 1000
         for _ in range(1000):
             action = policy_matrix[observation[0], observation[1]]
+            if action == np.nan:
+                continue
             # If the episode just started then it is
             # necessary to choose a random action (exploring starts)
             # This condition assures to satisfy the exploring starts. T
@@ -116,6 +121,22 @@ env = GridWorld(3, 4)
 gamma = 0.9
 print_epoch = 10000
 
+state_matrix = np.zeros((3,4))
+# this is the charging station
+state_matrix[0, 3] = 1
+# this is the staircase
+state_matrix[1, 3] = 1
+# this is the invalid state
+state_matrix[1, 1] = -1
+
+reward = np.full((3,4), -0.04)
+# this is the staircase
+reward[1, 3] = -1
+# this is the charging station
+reward[0, 3] = 1
+env.setStateMatrix(state_matrix)
+env.setRewardMatrix(reward)
+
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=4, size=(3, 4)).astype(np.float32)
 policy_matrix[1, 1] = np.NaN  # NaN for the obstacle at (1,1)
@@ -125,7 +146,7 @@ policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 state_action_matrix = np.random.random_sample((4, 12))
 running_mean_matrix = np.full((4, 12), 1.0e-12)
 # one row of all states for each action, thus 12 columns for each row
-n_epochs = 50000
-generalized_policy_iteration(policy_matrix, env, gamma, running_mean_matrix, state_action_matrix, n_epochs, print_epoch)
-state_action_matrix = print("Utility matrix after " + str(n_epochs) + " iterations:")
+n_epochs = 500000
+state_action_matrix = generalized_policy_iteration(policy_matrix, env, gamma, running_mean_matrix, state_action_matrix, n_epochs, print_epoch)
+print("Utility matrix after " + str(n_epochs) + " iterations: ")
 print(state_action_matrix)
