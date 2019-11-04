@@ -36,7 +36,7 @@ transition_matrix = np.array([
 ])
 
 # Define the policy matrix
-# 0=UP, 1=LEFT, 2=DOWN, 3=RIGHT, NaN=Obstacle, -1=NoAction
+# 0=UP, 1=RIGHT, 2=DOWN, 3=LEFT, NaN=Obstacle, -1=NoAction
 policy_matrix = np.array([
     [1, 1, 1, -1],
     [0,np.NaN, 0, -1],
