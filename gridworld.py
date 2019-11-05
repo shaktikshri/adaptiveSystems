@@ -152,7 +152,10 @@ class GridWorld:
         # TODO : Check if this line is significant
         # TODO : for MC for control, the transition matrix will not be given, hence this line
         # TODO : doesnt make any sense
-        action = np.random.choice(4, 1, p=self.transition_matrix[int(action),:])
+        probabilities = [0.1]*4
+        probabilities[int(action)] = 0.7
+        action = np.random.choice(4, 1, p=probabilities)
+        # action = np.random.choice(4, 1, p=self.transition_matrix[int(action),:])
 
         #action = self.transition_model(action)
 
