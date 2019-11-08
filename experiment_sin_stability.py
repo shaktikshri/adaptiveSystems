@@ -35,16 +35,16 @@ class RandomVariable:
         else:
             self.state = 0
 
-    def get_state(self):
+    def evaluate_state(self):
         # defined 3 states, safe (0), unsafe (1), critical (2)
         # Safe : value hops between [-3, +3]
         # unsafe : value between [-5,-3) and (+3, +5]
         # critical : values beyond that
         if abs(self.curr_val) < self.safe_mod:
-            return 0
+            self.state = 0
         elif abs(self.curr_val) < self.unsafe_mod:
-            return 1
-        return 2
+            self.state = 1
+        self.state = 2
 
     def f(self, x, mean, std):
         return np.sin(x) + np.random.normal(loc=mean, scale=std)
@@ -54,6 +54,11 @@ class RandomVariable:
             return self.f(self.curr_val, self.mean, self.std)
         else:
             return self.f(self.curr_val, mean, std)
+
+    def step(self, action):
+        self.curr_val += action
+        self.evaluate_state()
+        return self.state, env.curr_val
 
 
 obj = RandomVariable()
@@ -97,6 +102,22 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
     return policy_matrix
 
 
+def get_reward(action, prev_value):
+    """
+    Returns the reward for a particular action taken on observing a
+    particular metric value prev_value
+    :param action: the action taken in this state
+    :param prev_value: the value of the metric when the action was taken
+    :return: the reward
+    """
+    if abs(prev_value + action) < 3:
+        return +1
+    elif abs(prev_value + action) < 5:
+        return -0.4
+    else:
+        return -2
+
+
 env = RandomVariable()
 gamma = 0.99
 print_epoch = 10000
@@ -121,24 +142,33 @@ n_epochs = 500000
 
 for epoch in range(n_epochs):
     episode_list = list()
-    env.reset(exploring_starts=False)
+    env.reset(exploring_starts=True)
+
+    # observation is the current state and the current value
+    # which the agent observes
+    observation = [env.state, env.curr_val]
+
     is_starting = True
+    done = False
     # length of each episode is 1000
     for _ in range(1000):
-        action = policy_matrix[env.state]
-        # If the episode just started then it is
-        # necessary to choose a random action (exploring starts)
-        # This condition assures to satisfy the exploring starts. T
-        if is_starting:
-            action = np.random.randint(0, 4)
-            is_starting = False
+        action = policy_matrix[observation[0]]
+
         # Move one step and get a new observation and the reward
-        new_observation, reward, done = env.step(action)
+        new_observation = env.step(action)
+        if new_observation == 0:
+            done = True
+
+        # get the reward when you took action 'action' upon
+        # observing the metric value
+        reward = get_reward(observation[1], action)
+
         # append what had you observed, and what action did you take resulting in what reward
         episode_list.append((observation, action, reward))
         observation = new_observation
         if done:
             break
+
     # This cycle is the implementation of First-Visit MC.
     first_visit_done = np.zeros((4, 12))
     counter = 0
@@ -164,7 +194,6 @@ for epoch in range(n_epochs):
         print(state_action_matrix / running_mean_matrix)
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
-        print_policy(policy_matrix, (3,4))
 
 print("Utility matrix after " + str(n_epochs) + " iterations: ")
 print(state_action_matrix)
