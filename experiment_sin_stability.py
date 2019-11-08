@@ -17,12 +17,10 @@ plt.xlim(100, 200)
 
 class RandomVariable:
     def __init__(self):
-        self.max = None
-        self.min = None
-        self.mean = None
-        self.var = None
-        self.state = None
-        self.curr_val = None
+        self.mean = 0
+        self.std = 0.5
+        self.state = 0
+        self.curr_val = 0
         self.counter = 0
         self.safe_mod = 3
         self.unsafe_mod = 5
@@ -32,12 +30,15 @@ class RandomVariable:
         # Safe : value hops between [-3, +3]
         # unsafe : value between [-5,-3) and (+3, +5]
         # critical : values beyond that
-
         if abs(self.curr_val) < self.safe_mod:
             return 0
         elif abs(self.curr_val) < self.unsafe_mod:
             return 1
         return 2
 
-    def step(self):
+    def f(self, mean, std):
+        return np.sin(self.curr_val) + np.random.normal(loc=mean, scale=std)
+
+    def get_value(self):
         self.counter += 1
+        return self.f(self.mean, self.std)
