@@ -99,7 +99,8 @@ class RandomVariable:
             # if the state is terminal, dont do anything, just return done=True
             return self.state, self.curr_val, self.reward_matrix[self.state], True
         else:
-            self.curr_val += action
+            value = self.action_to_value_mapping[action]
+            self.curr_val += value
             self.evaluate_state()
             done = False
             if self.state == 3 or self.state == 0 or self.state == 6:
