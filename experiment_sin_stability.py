@@ -19,7 +19,7 @@ plt.xlim(100, 200)
 
 # In[]:
 
-
+NUM_STATES = 5
 class RandomVariable:
     def __init__(self):
         self.mean = 0
@@ -39,7 +39,12 @@ class RandomVariable:
         # defined 3 states, safe (0), unsafe (1), critical (2)
         # Safe : value hops between [-3, +3]
         # unsafe : value between [-5,-3) and (+3, +5]
-        # critical : values beyond that
+        # critical : values between [-10, -5) and (+5, +10]
+        # incident : values between (-inf, -10) and (+10, +inf)
+        # out of these incident and safe are the terminal states
+        # the episode will end at safe (meaning the value has stabilized) or
+        # the episode will end at incident (meaning there is nothing you can do
+        # to stabilize the value in the incident state, and you failed)
         if abs(self.curr_val) < self.safe_mod:
             self.state = 0
         elif abs(self.curr_val) < self.unsafe_mod:
@@ -122,14 +127,18 @@ env = RandomVariable()
 gamma = 0.99
 print_epoch = 10000
 
-state_matrix = np.zeros((3,))
-# this is the safe state
-state_matrix[0] = 1
-
-reward = np.zeros((3,))
-reward[0] = +1
-reward[1] = -0.5
-reward[2] = -2
+# Define the state matrix, there are 7 possible states,
+# 2 states on the right side of origin
+# 2 states on the left side of origin
+# 1 state around the origin
+# Thus state 0 is – metric between [-inf, -5)
+# Thus state 1 is – metric between [-5, -3)
+# Thus state 2 is – metric between [-3, +3]
+# Thus state 3 is – metric between (+3, +5]
+# Thus state 4 is – metric between (+5, +inf)
+state_matrix = np.zeros((NUM_STATES,1))
+state_matrix[2] = 1 # this is the safe state, terminal state
+state_matrix
 
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=4, size=(3,)).astype(np.float32)
