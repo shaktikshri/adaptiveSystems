@@ -91,14 +91,15 @@ class RandomVariable:
         Takes the given action and returns the new state,
         the new curr_val, the reward and a flag to show if the new state
         is a terminal state or not
-        :param action: the action to execute (precisely the value to be added
-        to the current curr_val)
+        :param action: the action to execute
         :return: a list: state, value, reward, done
         """
         if self.state == 3 or self.state == 0 or self.state == 6:
             # if the state is terminal, dont do anything, just return done=True
             return self.state, self.curr_val, self.reward_matrix[self.state], True
         else:
+            # Get the value to be added/subtracted corresponding to this action
+            # from the action_to_value_mapping
             value = self.action_to_value_mapping[action]
             self.curr_val += value
             self.evaluate_state()
