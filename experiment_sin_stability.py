@@ -128,10 +128,10 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
     :return:
     """
     for visit in episode_list:
-        observation = visit[0]
-        if policy_matrix[observation] != -1:
+        state = visit[0][0]
+        if policy_matrix[state] != -1:
             # if its not the terminal state
-            policy_matrix[observation] = np.argmax(state_action_matrix[:, None])
+            policy_matrix[state] = np.argmax(state_action_matrix[:, state])
     return policy_matrix
 
 
@@ -191,6 +191,8 @@ env.set_reward_matrix(reward_matrix)
 
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,)).astype(np.float32)
+policy_matrix[0] = policy_matrix[6] = -1 # these are the terminal states
+policy_matrix[3] = -1 # these are the terminal states
 
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
@@ -220,21 +222,19 @@ for epoch in range(N_EPOCHS):
             break
 
     # This cycle is the implementation of First-Visit MC.
-    first_visit_done = np.zeros((4, 12))
+    first_visit_done = np.zeros((NUM_ACTIONS, NUM_STATES))
     counter = 0
     # For each state-action stored in the episode list it checks if
     # it is the first visit and then estimates the return.
     # This is the Evaluation step of the GPI.
     for visit in episode_list:
-        observation = visit[0]
+        state = visit[0][0]
         action = visit[1]
-        column = observation[0] * 4 + observation[1]
-        row = int(action)
-        if first_visit_done[row, column] == 0:
+        if first_visit_done[action, state] == 0:
             return_value = get_return(episode_list[counter:], gamma)
-            running_mean_matrix[row, column] += 1
-            state_action_matrix[row, column] += return_value
-            first_visit_done[row, column] = 1
+            running_mean_matrix[action, state] += 1
+            state_action_matrix[action, state] += return_value
+            first_visit_done[action, state] = 1
         counter += 1
     # Policy update (Improvement)
     policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
@@ -245,5 +245,5 @@ for epoch in range(N_EPOCHS):
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
 
-print("Utility matrix after " + str(n_epochs) + " iterations: ")
+print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
 print(state_action_matrix)
