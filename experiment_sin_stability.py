@@ -34,6 +34,10 @@ class RandomVariable:
         self.safe_mod = 3
         self.unsafe_mod = 5
         self.critical_mod = 10
+        self.reward_matrix = None
+
+    def set_reward_matrix(self, matrix):
+        self.reward_matrix = matrix
 
     def reset(self, exploring_starts):
         if exploring_starts:
@@ -44,6 +48,7 @@ class RandomVariable:
         self.curr_val = np.random.uniform(low=low, high=high)
         # Set the state according to the metric
         self.evaluate_state()
+        return self.state, self.curr_val
 
     def evaluate_state(self):
         """
@@ -77,9 +82,17 @@ class RandomVariable:
             return self.f(self.curr_val, mean, std)
 
     def step(self, action):
+        """
+        Takes the given action and returns the new state,
+        the new curr_val, the reward and a flag to show if the new state
+        is a terminal state or not
+        :param action: the action to execute (precisely the value to be added
+        to the current curr_val)
+        :return: a list: state, value, reward, done
+        """
         self.curr_val += action
         self.evaluate_state()
-        return self.state, env.curr_val
+        return self.state, env.curr_val, self.reward_matrix[self.state], env.state == 3
 
 
 obj = RandomVariable()
