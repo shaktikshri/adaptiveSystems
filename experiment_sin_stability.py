@@ -59,7 +59,7 @@ class RandomVariable:
         :return:
         """
         if abs(self.curr_val) < self.safe_mod:
-            self.state = 0
+            self.state = 3
         elif abs(self.curr_val) < self.unsafe_mod:
             self.state = 2 if self.curr_val<0 else 4
         elif abs(self.curr_val) < self.critical_mod:
@@ -122,20 +122,20 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
     return policy_matrix
 
 
-def get_reward(prev_value, action):
-    """
-    Returns the reward for a particular action taken on observing a
-    particular metric value prev_value
-    :param prev_value: the value of the metric when the action was taken
-    :param action: the action taken in this state
-    :return: the reward
-    """
-    if abs(prev_value + action) < 3:
-        return +1
-    elif abs(prev_value + action) < 5:
-        return -0.4
-    else:
-        return -2
+# def get_reward(prev_value, action):
+#     """
+#     Returns the reward for a particular action taken on observing a
+#     particular metric value prev_value
+#     :param prev_value: the value of the metric when the action was taken
+#     :param action: the action taken in this state
+#     :return: the reward
+#     """
+#     if abs(prev_value + action) < 3:
+#         return +1
+#     elif abs(prev_value + action) < 5:
+#         return -0.4
+#     else:
+#         return -2
 
 
 env = RandomVariable()
@@ -167,6 +167,15 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # In State 6: Do nothing, add 0 since you are dead!
 action_matrix = np.zeros(NUM_ACTIONS, 1)
 
+# define the reward matrix as per the states,
+# State 0 and 6 are incident -> reward -1
+# State 1 and 5 are critical -> reward -0.5
+# State 2 and 4 are unsafe -> reward -0.1
+reward_matrix = np.array([
+    -1, -0.5, -0.1, 1, -0.1, -0.5, -1
+])
+env.set_reward_matrix(reward_matrix)
+
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,)).astype(np.float32)
 
@@ -178,11 +187,9 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 
 for epoch in range(N_EPOCHS):
     episode_list = list()
-    env.reset(exploring_starts=True)
-
+    observation = env.reset(exploring_starts=True)
     # observation is the current state and the current value
     # which the agent observes
-    observation = [env.state, env.curr_val]
 
     done = False
     # max length of each episode is 1000
@@ -190,13 +197,8 @@ for epoch in range(N_EPOCHS):
         action = policy_matrix[observation[0]]
 
         # Move one step and get a new observation and the reward
-        new_observation = env.step(action)
-        if new_observation == 0:
-            done = True
-
-        # get the reward when you took action 'action' upon
-        # observing the metric value
-        reward = get_reward(observation[1], action)
+        new_state, new_value, reward, done = env.step(action)
+        new_observation = [new_state, new_value]
 
         # append what had you observed, and what action did you take resulting in what reward
         episode_list.append((observation, action, reward))
