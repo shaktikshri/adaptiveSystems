@@ -281,3 +281,5 @@ for epoch in range(N_EPOCHS):
 
 print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
 print(state_action_matrix/running_mean_matrix)
+print('Current Learnt Policy is ')
+describe_policy_matrix(policy_matrix)
