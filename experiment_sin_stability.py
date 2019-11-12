@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-
+# In[]:
 def f(x, mean, std):
     return np.sin(x) + np.random.normal(loc=mean, scale=std)
 
@@ -22,7 +22,7 @@ plt.xlim(100, 200)
 NUM_STATES = 7
 NUM_ACTIONS = 7
 MAX_EPISODE_LENGTH = 1000
-N_EPOCHS = 500000
+N_EPOCHS = 500
 
 
 class RandomVariable:
@@ -90,9 +90,16 @@ class RandomVariable:
         to the current curr_val)
         :return: a list: state, value, reward, done
         """
-        self.curr_val += action
-        self.evaluate_state()
-        return self.state, env.curr_val, self.reward_matrix[self.state], env.state == 3
+        if self.state == 3 or self.state == 0 or self.state == 6:
+            # if the state is terminal, dont do anything, just return done=True
+            return self.state, self.curr_val, self.reward_matrix[self.state], True
+        else:
+            self.curr_val += action
+            self.evaluate_state()
+            done = False
+            if self.state == 3 or self.state == 0 or self.state == 6:
+                done = True
+            return self.state, env.curr_val, self.reward_matrix[self.state], done
 
 
 obj = RandomVariable()
@@ -151,7 +158,7 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
 
 env = RandomVariable()
 gamma = 0.99
-print_epoch = 10000
+print_epoch = 50
 
 # Define the state matrix, there are 7 possible states,
 # 2 states on the right side of origin
