@@ -2,7 +2,7 @@
 
 Project Description is available at [my university page](http://www.cs.toronto.edu/~shaktik/) under Proactive Troubleshooting [Aug2018-Present].
 
-I am updating this readme as we make progress, the individual files however have an extensive documentation. 
+I will update this readme as I get more time, the individual files however have an extensive documentation.
 
 ```experiment_sin_stability.py```
  
