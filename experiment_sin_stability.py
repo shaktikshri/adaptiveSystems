@@ -115,6 +115,19 @@ obj.get_value()
 obj.evaluate_state()
 
 
+def describe_policy_matrix(matrix):
+    for state, action in enumerate(policy_matrix):
+        if action == -1:
+            print('Terminal State ', state, ' : No Action')
+        else:
+            value = env.action_to_value_mapping[action]
+            if value > 0:
+                string = 'Subtract '+str(abs(value))+' from current value'
+            else:
+                string = 'Add '+str(abs(value))+' to current value'
+            print('State ', state, ' : Action : ', string)
+
+
 def get_return(state_list, gamma):
     """
     :param state_list: a list of tuples (observation, action, reward)
@@ -207,7 +220,7 @@ reward_matrix = np.array([
 env.set_reward_matrix(reward_matrix)
 
 # Random policy matrix
-policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,)).astype(np.float32)
+policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,))
 policy_matrix[0] = policy_matrix[6] = -1 # these are the terminal states
 policy_matrix[3] = -1 # these are the terminal states
 
