@@ -35,9 +35,14 @@ class RandomVariable:
         self.unsafe_mod = 5
         self.critical_mod = 10
         self.reward_matrix = None
+        self.action_to_value_mapping = None # this is the action to value mapping,
+        # i.e. for a given action how much should you add/subtract from the current_value
 
     def set_reward_matrix(self, matrix):
         self.reward_matrix = matrix
+
+    def set_action_to_value_mapping(self, matrix):
+        self.action_to_value_mapping = matrix
 
     def reset(self, exploring_starts):
         if exploring_starts:
@@ -188,9 +193,7 @@ action_matrix[0] = +10
 action_matrix[1] = +5
 action_matrix[2] = -5
 action_matrix[3] = -10
-# We dont need the action matrix
-# action matrix is depicted only for your understanding
-
+env.set_action_to_value_mapping(action_matrix)
 
 # define the reward matrix as per the states,
 # State 0 and 6 are incident -> reward -1
@@ -212,9 +215,9 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 # one row of all states for each action, thus NUM_STATES columns for each row
 
 # IMPORTANT
-# reward_matrix, policy_matrix, state_action_matrix and running_mean_matrix are the only ones that we need
+# reward_matrix, policy_matrix, state_action_matrix, action_to_value_mapping
+# and running_mean_matrix are the only ones that we need
 # Since the state depends on the current metric value only, we dont need to store the state_matrix in our env variable
-# We also dont need the action martrix, they are only for your clear understanding of the scenario
 
 for epoch in range(N_EPOCHS):
     episode_list = list()
@@ -245,7 +248,7 @@ for epoch in range(N_EPOCHS):
     # This is the Evaluation step of the GPI.
     for visit in episode_list:
         state = visit[0][0]
-        action = visit[1]
+        action = int(visit[1])
         if first_visit_done[action, state] == 0:
             return_value = get_return(episode_list[counter:], gamma)
             running_mean_matrix[action, state] += 1
@@ -262,4 +265,4 @@ for epoch in range(N_EPOCHS):
         print(policy_matrix)
 
 print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
-print(state_action_matrix)
+print(state_action_matrix/running_mean_matrix)
