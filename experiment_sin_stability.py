@@ -102,12 +102,12 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
     return policy_matrix
 
 
-def get_reward(action, prev_value):
+def get_reward(prev_value, action):
     """
     Returns the reward for a particular action taken on observing a
     particular metric value prev_value
-    :param action: the action taken in this state
     :param prev_value: the value of the metric when the action was taken
+    :param action: the action taken in this state
     :return: the reward
     """
     if abs(prev_value + action) < 3:
