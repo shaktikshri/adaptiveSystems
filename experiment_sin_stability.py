@@ -19,7 +19,9 @@ plt.xlim(100, 200)
 
 # In[]:
 
-NUM_STATES = 5
+NUM_STATES = 7
+NUM_ACTIONS = 7
+
 class RandomVariable:
     def __init__(self):
         self.mean = 0
@@ -32,7 +34,7 @@ class RandomVariable:
 
     def reset(self, exploring_starts):
         if exploring_starts:
-            self.state = np.random.choice(3, 1)
+            self.state = np.random.choice(NUM_STATES, 1)
         else:
             self.state = 0
 
@@ -137,23 +139,36 @@ print_epoch = 10000
 # 2 states on the right side of origin
 # 2 states on the left side of origin
 # 1 state around the origin
-# Thus state 0 is – metric between [-inf, -5)
-# Thus state 1 is – metric between [-5, -3)
-# Thus state 2 is – metric between [-3, +3]
-# Thus state 3 is – metric between (+3, +5]
-# Thus state 4 is – metric between (+5, +inf)
+# Thus state 0 is – metric between [-inf, -10)
+# Thus state 1 is – metric between [-10, -5)
+# Thus state 2 is – metric between [-5, -3)
+# Thus state 3 is – metric between [-3, +3]
+# Thus state 4 is – metric between (+3, +5]
+# Thus state 5 is – metric between (-5, +10]
+# Thus state 6 is – metric between (+10, +inf)
 state_matrix = np.zeros((NUM_STATES,1))
 state_matrix[2] = 1 # this is the safe state, terminal state
 state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is again a terminal state
 
+# There are 7 possible actions
+# In State 0: Do nothing, add 0 since you are dead!
+# In State 1: Add 10 to the metric
+# In State 2: Add 5 to the metrix
+# In State 3: Do Nothing, enjoy the peace!
+# In State 4: Subtract 5 from the metric
+# In State 5: Subtract 10 from the metric
+# In State 6: Do nothing, add 0 since you are dead!
+action_matrix = np.zeros(NUM_ACTIONS, 1)
+
 # Random policy matrix
-policy_matrix = np.random.randint(low=0, high=4, size=(3,)).astype(np.float32)
+policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,)).astype(np.float32)
 
 # State-action matrix or the Q values (init to zeros or to random values)
-state_action_matrix = np.random.random_sample((4, 12))
-running_mean_matrix = np.full((4, 12), 1.0e-12)
-# one row of all states for each action, thus 12 columns for each row
+state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
+running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
+# one row of all states for each action, thus NUM_STATES columns for each row
 n_epochs = 500000
+
 
 for epoch in range(n_epochs):
     episode_list = list()
