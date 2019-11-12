@@ -21,6 +21,9 @@ plt.xlim(100, 200)
 
 NUM_STATES = 7
 NUM_ACTIONS = 7
+MAX_EPISODE_LENGTH = 1000
+N_EPOCHS = 500000
+
 
 class RandomVariable:
     def __init__(self):
@@ -34,9 +37,13 @@ class RandomVariable:
 
     def reset(self, exploring_starts):
         if exploring_starts:
-            self.state = np.random.choice(NUM_STATES, 1)
+            # Randomly select a current value
+            low, high = -self.critical_mod-2, self.critical_mod+2
         else:
-            self.state = 0
+            low, high = -self.safe_mod-2, self.safe_mod+2
+        self.curr_val = np.random.uniform(low=low, high=high)
+        # Set the state according to the metric
+        self.evaluate_state()
 
     def evaluate_state(self):
         """
@@ -167,10 +174,9 @@ policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,)).a
 state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
 running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 # one row of all states for each action, thus NUM_STATES columns for each row
-n_epochs = 500000
 
 
-for epoch in range(n_epochs):
+for epoch in range(N_EPOCHS):
     episode_list = list()
     env.reset(exploring_starts=True)
 
@@ -178,10 +184,9 @@ for epoch in range(n_epochs):
     # which the agent observes
     observation = [env.state, env.curr_val]
 
-    is_starting = True
     done = False
-    # length of each episode is 1000
-    for _ in range(1000):
+    # max length of each episode is 1000
+    for _ in range(MAX_EPISODE_LENGTH):
         action = policy_matrix[observation[0]]
 
         # Move one step and get a new observation and the reward
