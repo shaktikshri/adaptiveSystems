@@ -20,7 +20,7 @@ plt.xlim(100, 200)
 # In[]:
 
 NUM_STATES = 7
-NUM_ACTIONS = 7
+NUM_ACTIONS = 4 # only 4 possible actions
 MAX_EPISODE_LENGTH = 1000
 N_EPOCHS = 500
 
@@ -177,15 +177,17 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # We dont need the state matrix since the state depends purely on the value of the metric
 # state matrix is depicted only for your understanding
 
-# There are 7 possible actions
-# In State 0: Do nothing, add 0 since you are dead!
-# In State 1: Add 10 to the metric
-# In State 2: Add 5 to the metrix
-# In State 3: Do Nothing, enjoy the peace!
-# In State 4: Subtract 5 from the metric
-# In State 5: Subtract 10 from the metric
-# In State 6: Do nothing, add 0 since you are dead!
-action_matrix = np.zeros(NUM_ACTIONS, 1)
+# There are 4 possible actions
+# Entry 0 : In State 1: Add 10 to the metric
+# Entry 1 : In State 2: Add 5 to the metrix
+# Entry 2 : In State 4: Subtract 5 from the metric
+# Entry 3 : In State 5: Subtract 10 from the metric
+# Nothing has to be done in states 0,3 and 6 since they are the terminal states
+action_matrix = np.zeros(NUM_ACTIONS)
+action_matrix[0] = +10
+action_matrix[1] = +5
+action_matrix[2] = -5
+action_matrix[3] = -10
 # We dont need the action matrix
 # action matrix is depicted only for your understanding
 
