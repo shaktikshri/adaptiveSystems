@@ -101,8 +101,6 @@ obj.get_value()
 obj.evaluate_state()
 
 
-
-
 def get_return(state_list, gamma):
     """
     :param state_list: a list of tuples (observation, action, reward)
@@ -169,6 +167,8 @@ print_epoch = 10000
 state_matrix = np.zeros((NUM_STATES,1))
 state_matrix[2] = 1 # this is the safe state, terminal state
 state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is again a terminal state
+# We dont need the state matrix since the state depends purely on the value of the metric
+# state matrix is depicted only for your understanding
 
 # There are 7 possible actions
 # In State 0: Do nothing, add 0 since you are dead!
@@ -179,6 +179,9 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # In State 5: Subtract 10 from the metric
 # In State 6: Do nothing, add 0 since you are dead!
 action_matrix = np.zeros(NUM_ACTIONS, 1)
+# We dont need the action matrix
+# action matrix is depicted only for your understanding
+
 
 # define the reward matrix as per the states,
 # State 0 and 6 are incident -> reward -1
@@ -199,6 +202,10 @@ state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
 running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 # one row of all states for each action, thus NUM_STATES columns for each row
 
+# IMPORTANT
+# reward_matrix, policy_matrix, state_action_matrix and running_mean_matrix are the only ones that we need
+# Since the state depends on the current metric value only, we dont need to store the state_matrix in our env variable
+# We also dont need the action martrix, they are only for your clear understanding of the scenario
 
 for epoch in range(N_EPOCHS):
     episode_list = list()
