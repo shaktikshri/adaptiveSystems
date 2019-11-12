@@ -28,6 +28,7 @@ class RandomVariable:
         self.curr_val = 0
         self.safe_mod = 3
         self.unsafe_mod = 5
+        self.critical_mod = 10
 
     def reset(self, exploring_starts):
         if exploring_starts:
@@ -36,20 +37,26 @@ class RandomVariable:
             self.state = 0
 
     def evaluate_state(self):
-        # defined 3 states, safe (0), unsafe (1), critical (2)
-        # Safe : value hops between [-3, +3]
-        # unsafe : value between [-5,-3) and (+3, +5]
-        # critical : values between [-10, -5) and (+5, +10]
-        # incident : values between (-inf, -10) and (+10, +inf)
-        # out of these incident and safe are the terminal states
-        # the episode will end at safe (meaning the value has stabilized) or
-        # the episode will end at incident (meaning there is nothing you can do
-        # to stabilize the value in the incident state, and you failed)
+        """
+        defined 7 states,
+        (State 3)       Safe : value hops between [-3, +3]
+        (State 2 and 4) unsafe : value between [-5,-3) and (+3, +5]
+        (State 1 and 5) critical : values between [-10, -5) and (+5, +10]
+        (State 0 and 6) incident : values between (-inf, -10) and (+10, +inf)
+        Out of these incident and safe are the terminal states
+        the episode will end at safe (meaning the value has stabilized) or
+        the episode will end at incident (meaning there is nothing you can do
+        to stabilize the value in the incident state, and you failed)
+        :return:
+        """
         if abs(self.curr_val) < self.safe_mod:
             self.state = 0
         elif abs(self.curr_val) < self.unsafe_mod:
-            self.state = 1
-        self.state = 2
+            self.state = 2 if self.curr_val<0 else 4
+        elif abs(self.curr_val) < self.critical_mod:
+            self.state = 1 if self.curr_val<0 else 5
+        else:
+            self.state = 0 if self.curr_val<0 else 6
 
     def f(self, x, mean, std):
         return np.sin(x) + np.random.normal(loc=mean, scale=std)
@@ -69,8 +76,7 @@ class RandomVariable:
 obj = RandomVariable()
 y = list()
 obj.get_value()
-obj.get_state()
-
+obj.evaluate_state()
 
 
 
@@ -138,7 +144,7 @@ print_epoch = 10000
 # Thus state 4 is – metric between (+5, +inf)
 state_matrix = np.zeros((NUM_STATES,1))
 state_matrix[2] = 1 # this is the safe state, terminal state
-state_matrix
+state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is again a terminal state
 
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=4, size=(3,)).astype(np.float32)
