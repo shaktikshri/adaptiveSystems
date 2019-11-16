@@ -19,12 +19,6 @@ plt.xlim(100, 200)
 
 # In[]:
 
-NUM_STATES = 7
-NUM_ACTIONS = 4 # only 4 possible actions
-MAX_EPISODE_LENGTH = 1000
-N_EPOCHS = 500
-
-
 class RandomVariable:
     def __init__(self):
         self.mean = 0
@@ -109,12 +103,6 @@ class RandomVariable:
             return self.state, env.curr_val, self.reward_matrix[self.state], done
 
 
-obj = RandomVariable()
-y = list()
-obj.get_value()
-obj.evaluate_state()
-
-
 def describe_policy_matrix(matrix):
     for state, action in enumerate(policy_matrix):
         if action == -1:
@@ -176,6 +164,13 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
 #         return -2
 
 
+# In[]:
+
+NUM_STATES = 7
+NUM_ACTIONS = 10 # only 4 possible actions
+MAX_EPISODE_LENGTH = 1000
+N_EPOCHS = 50000
+
 env = RandomVariable()
 gamma = 0.99
 print_epoch = 50
@@ -203,11 +198,8 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # Entry 2 : In State 4: Subtract 5 from the metric
 # Entry 3 : In State 5: Subtract 10 from the metric
 # Nothing has to be done in states 0,3 and 6 since they are the terminal states
-action_matrix = np.zeros(NUM_ACTIONS)
-action_matrix[0] = +10
-action_matrix[1] = +5
-action_matrix[2] = -5
-action_matrix[3] = -10
+action_matrix = np.random.uniform(low=-10, high=10, size=(NUM_ACTIONS,))
+
 env.set_action_to_value_mapping(action_matrix)
 
 # define the reward matrix as per the states,
@@ -234,6 +226,7 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 # and running_mean_matrix are the only ones that we need
 # Since the state depends on the current metric value only, we dont need to store the state_matrix in our env variable
 
+all_episode_lists = list()
 for epoch in range(N_EPOCHS):
     episode_list = list()
     observation = env.reset(exploring_starts=True)
@@ -254,6 +247,9 @@ for epoch in range(N_EPOCHS):
         observation = new_observation
         if done:
             break
+
+    # For debugging
+    all_episode_lists.append(episode_list)
 
     # This cycle is the implementation of First-Visit MC.
     first_visit_done = np.zeros((NUM_ACTIONS, NUM_STATES))
@@ -278,8 +274,9 @@ for epoch in range(N_EPOCHS):
         print(state_action_matrix / running_mean_matrix)
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
+        describe_policy_matrix(policy_matrix)
 
-print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
-print(state_action_matrix/running_mean_matrix)
-print('Current Learnt Policy is ')
-describe_policy_matrix(policy_matrix)
+# print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
+# print(state_action_matrix/running_mean_matrix)
+# print('Current Learnt Policy is ')
+# describe_policy_matrix(policy_matrix)
