@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from environment import RandomVariable
+from env_definition import RandomVariable
 from util import *
 
 # In[]:
@@ -31,15 +31,39 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # We dont need the state matrix since the state depends purely on the value of the metric
 # state matrix is depicted only for your understanding
 
-# There are 4 possible actions
+# There are 10 possible actions
 # Entry 0 : In State 1: Add 10 to the metric
 # Entry 1 : In State 2: Add 5 to the metrix
 # Entry 2 : In State 4: Subtract 5 from the metric
 # Entry 3 : In State 5: Subtract 10 from the metric
 # Nothing has to be done in states 0,3 and 6 since they are the terminal states
 action_matrix = np.linspace(start=-10, stop=10, num=NUM_ACTIONS)
-
 env.set_action_to_value_mapping(action_matrix)
+
+# We need to define the transition matrix as well. Now the transition matrix will basically be a
+# probabilities over different actions. Example if the agent decides that it needs to do an addition to the current
+# value, then there's a probability over what values should it choose for the addition. Similarly for subtraction
+# So if agent decides to execute action i, then action i has probability 0.8, i-1 has 0.1, i-2 has 0.1
+transition_matrix = np.array([
+    [
+        []
+    ],
+    [
+        []
+    ],
+    [
+        []
+    ],
+    [
+        []
+    ],
+    [
+        []
+    ],
+    [
+        []
+    ]
+])
 
 # define the reward matrix as per the states,
 # State 0 and 6 are incident -> reward -1
@@ -67,6 +91,7 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 
 all_episode_lists = list()
 # for epoch in range(N_EPOCHS):
+
 
 def perform_generalized_policy_iteration():
     global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, state_action_matrix, \
