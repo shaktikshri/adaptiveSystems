@@ -62,11 +62,8 @@ class RandomVariable:
         # return np.sin(x) + np.random.normal(loc=mean, scale=std)
         return np.sin(x) + np.random.choice(self.noise_array)
 
-    def get_value(self, mean=None, std=None):
-        if not mean and not std:
-            return self.f(self.curr_val, self.mean, self.std)
-        else:
-            return self.f(self.curr_val, mean, std)
+    def is_terminal_state(self):
+        return self.state == 0 or self.state == 4
 
     def step(self, action, time):
         """
