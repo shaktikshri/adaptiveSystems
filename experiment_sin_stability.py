@@ -104,7 +104,7 @@ class RandomVariable:
 
 
 def describe_policy_matrix(matrix):
-    for state, action in enumerate(policy_matrix):
+    for state, action in enumerate(matrix):
         if action == -1:
             print('Terminal State ', state, ' : No Action')
         else:
@@ -146,6 +146,12 @@ def update_policy(episode_list, policy_matrix, state_action_matrix):
             # if its not the terminal state
             policy_matrix[state] = np.argmax(state_action_matrix[:, state])
     return policy_matrix
+
+
+def has_converged(old_matrix, new_matrix):
+    if abs(np.sum(new_matrix-old_matrix)) < 0.1:
+        return True
+    return False
 
 
 # def get_reward(prev_value, action):
@@ -207,7 +213,7 @@ env.set_action_to_value_mapping(action_matrix)
 # State 1 and 5 are critical -> reward -0.5
 # State 2 and 4 are unsafe -> reward -0.1
 reward_matrix = np.array([
-    -1, -0.5, -0.1, 1, -0.1, -0.5, -1
+    -1, -0.05, -0.05, 1, -0.05, -0.05, -1
 ])
 env.set_reward_matrix(reward_matrix)
 
@@ -227,7 +233,10 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 # Since the state depends on the current metric value only, we dont need to store the state_matrix in our env variable
 
 all_episode_lists = list()
-for epoch in range(N_EPOCHS):
+# for epoch in range(N_EPOCHS):
+epoch = 0
+while True:
+    epoch += 1
     episode_list = list()
     observation = env.reset(exploring_starts=True)
     # observation is the current state and the current value
@@ -257,6 +266,7 @@ for epoch in range(N_EPOCHS):
     # For each state-action stored in the episode list it checks if
     # it is the first visit and then estimates the return.
     # This is the Evaluation step of the GPI.
+    old_state_action_matrix = state_action_matrix.copy()
     for visit in episode_list:
         state = visit[0][0]
         action = int(visit[1])
@@ -267,6 +277,10 @@ for epoch in range(N_EPOCHS):
             first_visit_done[action, state] = 1
         counter += 1
     # Policy update (Improvement)
+
+    if has_converged(old_state_action_matrix/running_mean_matrix, state_action_matrix/running_mean_matrix):
+        break
+
     policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
 
     if epoch % print_epoch == 0:
