@@ -28,14 +28,10 @@ state_matrix[0] = state_matrix[-1] = 1 # These are the incident state, which is 
 # We dont need the state matrix since the state depends purely on the value of the metric
 # state matrix is depicted only for your understanding
 
-# TODO : Define the action matrix
 # There are 10 possible actions
-# Entry 0 : In State 1: Add 10 to the metric
-# Entry 1 : In State 2: Add 5 to the metrix
-# Entry 2 : In State 4: Subtract 5 from the metric
-# Entry 3 : In State 5: Subtract 10 from the metric
-# Nothing has to be done in states 0,3 and 6 since they are the terminal states
-action_matrix = np.linspace(start=-10, stop=10, num=NUM_ACTIONS)
+# Each of them given a value to be added into the current value of the function which
+# it aims to stabilize. These values are from uniform log scale between -0.5 to +0.5
+action_matrix = np.linspace(start=-1, stop=1, num=NUM_ACTIONS)
 env.set_action_to_value_mapping(action_matrix)
 
 # TODO: Decide on the transition matrix after deciding the actions possible
