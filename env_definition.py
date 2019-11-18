@@ -6,12 +6,16 @@ class RandomVariable:
         self.std = 0.5
         self.state = 0
         self.curr_val = 0
-        self.safe_mod = 3
-        self.unsafe_mod = 5
-        self.critical_mod = 10
+        self.safe_mod = 0.01
+        self.unsafe_mod = 0.1
+        self.critical_mod = None
         self.reward_matrix = None
         self.action_to_value_mapping = None # this is the action to value mapping,
         # i.e. for a given action how much should you add/subtract from the current_value
+        self.noise_array = [-0.5, -0.25, 0.25, 0.5] # this noise array should be used as a
+        # PoC to show that with 4 distinct values of noises we can segregate the noise.
+        # Once we've shown this, we can extend this to large number of noise values, maybe
+        # even continuous
 
     def set_reward_matrix(self, matrix):
         self.reward_matrix = matrix
