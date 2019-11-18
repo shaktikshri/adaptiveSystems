@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from environment import RandomVariable
+from util import *
 
 # In[]:
 def f(x, mean, std):
@@ -19,161 +21,8 @@ plt.xlim(100, 200)
 
 # In[]:
 
-class RandomVariable:
-    def __init__(self):
-        self.mean = 0
-        self.std = 0.5
-        self.state = 0
-        self.curr_val = 0
-        self.safe_mod = 3
-        self.unsafe_mod = 5
-        self.critical_mod = 10
-        self.reward_matrix = None
-        self.action_to_value_mapping = None # this is the action to value mapping,
-        # i.e. for a given action how much should you add/subtract from the current_value
-
-    def set_reward_matrix(self, matrix):
-        self.reward_matrix = matrix
-
-    def set_action_to_value_mapping(self, matrix):
-        self.action_to_value_mapping = matrix
-
-    def reset(self, exploring_starts):
-        if exploring_starts:
-            # Randomly select a current value
-            low, high = -self.critical_mod-2, self.critical_mod+2
-        else:
-            low, high = -self.safe_mod-2, self.safe_mod+2
-        self.curr_val = np.random.uniform(low=low, high=high)
-        # Set the state according to the metric
-        self.evaluate_state()
-        return self.state, self.curr_val
-
-    def evaluate_state(self):
-        """
-        defined 7 states,
-        (State 3)       Safe : value hops between [-3, +3]
-        (State 2 and 4) unsafe : value between [-5,-3) and (+3, +5]
-        (State 1 and 5) critical : values between [-10, -5) and (+5, +10]
-        (State 0 and 6) incident : values between (-inf, -10) and (+10, +inf)
-        Out of these incident and safe are the terminal states
-        the episode will end at safe (meaning the value has stabilized) or
-        the episode will end at incident (meaning there is nothing you can do
-        to stabilize the value in the incident state, and you failed)
-        :return:
-        """
-        if abs(self.curr_val) < self.safe_mod:
-            self.state = 3
-        elif abs(self.curr_val) < self.unsafe_mod:
-            self.state = 2 if self.curr_val<0 else 4
-        elif abs(self.curr_val) < self.critical_mod:
-            self.state = 1 if self.curr_val<0 else 5
-        else:
-            self.state = 0 if self.curr_val<0 else 6
-
-    def f(self, x, mean, std):
-        return np.sin(x) + np.random.normal(loc=mean, scale=std)
-
-    def get_value(self, mean=None, std=None):
-        if not mean and not std:
-            return self.f(self.curr_val, self.mean, self.std)
-        else:
-            return self.f(self.curr_val, mean, std)
-
-    def step(self, action):
-        """
-        Takes the given action and returns the new state,
-        the new curr_val, the reward and a flag to show if the new state
-        is a terminal state or not
-        :param action: the action to execute
-        :return: a list: state, value, reward, done
-        """
-        if self.state == 3 or self.state == 0 or self.state == 6:
-            # if the state is terminal, dont do anything, just return done=True
-            return self.state, self.curr_val, self.reward_matrix[self.state], True
-        else:
-            # Get the value to be added/subtracted corresponding to this action
-            # from the action_to_value_mapping
-            value = self.action_to_value_mapping[action]
-            self.curr_val += value
-            self.evaluate_state()
-            done = False
-            if self.state == 3 or self.state == 0 or self.state == 6:
-                done = True
-            return self.state, env.curr_val, self.reward_matrix[self.state], done
-
-
-def describe_policy_matrix(matrix):
-    for state, action in enumerate(matrix):
-        if action == -1:
-            print('Terminal State ', state, ' : No Action')
-        else:
-            value = env.action_to_value_mapping[action]
-            if value > 0:
-                string = 'Subtract '+str(abs(value))+' from current value'
-            else:
-                string = 'Add '+str(abs(value))+' to current value'
-            print('State ', state, ' : Action : ', string)
-
-
-def get_return(state_list, gamma):
-    """
-    :param state_list: a list of tuples (observation, action, reward)
-    :param gamma: the discount factor
-    :return: the return value for that state_list
-    """
-    return_value = 0
-    counter = 0
-    for visit in state_list:
-        reward = visit[2]
-        return_value += reward * np.power(gamma, counter)
-        counter += 1
-    return return_value
-
-
-def update_policy(episode_list, policy_matrix, state_action_matrix):
-    """
-    Updates the policy in a greedy way, selecting actions which have the highest
-    utility for each state visited in the episode_list
-    :param episode_list: the tuples of states visited as (observation, action, reward)
-    :param policy_matrix: the policy matrix
-    :param state_action_matrix: the Q matrix
-    :return:
-    """
-    for visit in episode_list:
-        state = visit[0][0]
-        if policy_matrix[state] != -1:
-            # if its not the terminal state
-            policy_matrix[state] = np.argmax(state_action_matrix[:, state])
-    return policy_matrix
-
-
-def has_converged(old_matrix, new_matrix):
-    if abs(np.sum(new_matrix-old_matrix)) < 0.1:
-        return True
-    return False
-
-
-# def get_reward(prev_value, action):
-#     """
-#     Returns the reward for a particular action taken on observing a
-#     particular metric value prev_value
-#     :param prev_value: the value of the metric when the action was taken
-#     :param action: the action taken in this state
-#     :return: the reward
-#     """
-#     if abs(prev_value + action) < 3:
-#         return +1
-#     elif abs(prev_value + action) < 5:
-#         return -0.4
-#     else:
-#         return -2
-
-
-# In[]:
-
 NUM_STATES = 7
-NUM_ACTIONS = 10 # only 4 possible actions
+NUM_ACTIONS = 10
 MAX_EPISODE_LENGTH = 1000
 N_EPOCHS = 50000
 
@@ -204,7 +53,7 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 # Entry 2 : In State 4: Subtract 5 from the metric
 # Entry 3 : In State 5: Subtract 10 from the metric
 # Nothing has to be done in states 0,3 and 6 since they are the terminal states
-action_matrix = np.random.uniform(low=-10, high=10, size=(NUM_ACTIONS,))
+action_matrix = np.linspace(start=-10, stop=10, num=NUM_ACTIONS)
 
 env.set_action_to_value_mapping(action_matrix)
 
@@ -213,7 +62,7 @@ env.set_action_to_value_mapping(action_matrix)
 # State 1 and 5 are critical -> reward -0.5
 # State 2 and 4 are unsafe -> reward -0.1
 reward_matrix = np.array([
-    -1, -0.05, -0.05, 1, -0.05, -0.05, -1
+    -1, -0.1, -0.05, 10, -0.05, -0.1, -1
 ])
 env.set_reward_matrix(reward_matrix)
 
@@ -288,7 +137,7 @@ while True:
         print(state_action_matrix / running_mean_matrix)
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
-        describe_policy_matrix(policy_matrix)
+        describe_policy_matrix(policy_matrix, env)
 
 # print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
 # print(state_action_matrix/running_mean_matrix)
