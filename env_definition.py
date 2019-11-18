@@ -26,12 +26,12 @@ class RandomVariable:
     def reset(self, exploring_starts):
         if exploring_starts:
             # Randomly select a current value
-            low, high = -self.critical_mod-2, self.critical_mod+2
+            low, high = -self.unsafe_mod, self.unsafe_mod
+            self.curr_val = np.random.uniform(low=low, high=high)
         else:
-            low, high = -self.safe_mod-2, self.safe_mod+2
-        self.curr_val = np.random.uniform(low=low, high=high)
+            self.curr_val = 0
         # Set the state according to the metric
-        self.evaluate_state()
+        self.evaluate_state(0, 0)
         return self.state, self.curr_val
 
     def evaluate_state(self, action_value, t):
@@ -68,7 +68,7 @@ class RandomVariable:
         else:
             return self.f(self.curr_val, mean, std)
 
-    def step(self, action):
+    def step(self, action, time):
         """
         Takes the given action and returns the new state,
         the new curr_val, the reward and a flag to show if the new state
@@ -76,17 +76,14 @@ class RandomVariable:
         :param action: the action to execute
         :return: a list: state, value, reward, done
         """
-        if self.state == 3 or self.state == 0 or self.state == 6:
+        if self.is_terminal_state():
             # if the state is terminal, dont do anything, just return done=True
             return self.state, self.curr_val, self.reward_matrix[self.state], True
         else:
             # Get the value to be added/subtracted corresponding to this action
             # from the action_to_value_mapping
-            value = self.action_to_value_mapping[action]
-            self.curr_val += value
-            self.evaluate_state()
-            done = False
-            if self.state == 3 or self.state == 0 or self.state == 6:
-                done = True
+            action_value = self.action_to_value_mapping[action]
+            self.evaluate_state(action_value, time)
+            done = self.is_terminal_state()
             return self.state, self.curr_val, self.reward_matrix[self.state], done
 
