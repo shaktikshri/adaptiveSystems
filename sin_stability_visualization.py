@@ -1,18 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Qt5Agg')
 
 
-def f(x, mean, std):
-    return np.sin(x) + np.random.normal(loc=mean, scale=std)
+def f(x, mean=0.0, std=0.0):
+    noise = np.random.normal(loc=mean, scale=std, size=x.shape[0])
+    return np.sin(x) + noise
 
+std = 0.05
+mean = 0
+total_size = 10
 
-total_size = 1000
-a = list()
-value = f(0, 0, 0.5)
-for el in range(total_size):
-    a.append(value)
-    value = f(value, 0, 0.5)
-
-a = np.array(a)
-plt.plot(np.arange(1,total_size+1), a)
-plt.xlim(100, 200)
+total_range = np.arange(0, total_size, 0.1)
+for std in [0, 0.2, 0.4, 0.8, 1]:
+    plt.figure()
+    plt.plot(f(total_range, mean, std))
+# plt.xlim(100, 200)
