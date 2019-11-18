@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def describe_policy_matrix(matrix, env):
     for state, action in enumerate(matrix):
         if action == -1:
@@ -49,4 +50,3 @@ def has_converged(old_matrix, new_matrix):
     if abs(np.sum(new_matrix-old_matrix)) < 0.1:
         return True
     return False
-

@@ -4,22 +4,6 @@ from environment import RandomVariable
 from util import *
 
 # In[]:
-def f(x, mean, std):
-    return np.sin(x) + np.random.normal(loc=mean, scale=std)
-
-
-total_size = 1000
-a = list()
-value = f(0, 0, 0.5)
-for el in range(total_size):
-    a.append(value)
-    value = f(value, 0, 0.5)
-
-a = np.array(a)
-plt.plot(np.arange(1,total_size+1), a)
-plt.xlim(100, 200)
-
-# In[]:
 
 NUM_STATES = 7
 NUM_ACTIONS = 10
@@ -83,63 +67,70 @@ running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
 
 all_episode_lists = list()
 # for epoch in range(N_EPOCHS):
-epoch = 0
-while True:
-    epoch += 1
-    episode_list = list()
-    observation = env.reset(exploring_starts=True)
-    # observation is the current state and the current value
-    # which the agent observes
 
-    done = False
-    # max length of each episode is 1000
-    for _ in range(MAX_EPISODE_LENGTH):
-        action = policy_matrix[observation[0]]
+def perform_generalized_policy_iteration():
+    global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, state_action_matrix, \
+        policy_matrix, running_mean_matrix, MAX_EPISODE_LENGTH, env
 
-        # Move one step and get a new observation and the reward
-        new_state, new_value, reward, done = env.step(action)
-        new_observation = [new_state, new_value]
+    epoch = 0
+    gamma = 0.9
 
-        # append what had you observed, and what action did you take resulting in what reward
-        episode_list.append((observation, action, reward))
-        observation = new_observation
-        if done:
+    while True:
+        epoch += 1
+        episode_list = list()
+        observation = env.reset(exploring_starts=True)
+        # observation is the current state and the current value
+        # which the agent observes
+
+        done = False
+        # max length of each episode is 1000
+        for _ in range(MAX_EPISODE_LENGTH):
+            action = policy_matrix[observation[0]]
+
+            # Move one step and get a new observation and the reward
+            new_state, new_value, reward, done = env.step(action)
+            new_observation = [new_state, new_value]
+
+            # append what had you observed, and what action did you take resulting in what reward
+            episode_list.append((observation, action, reward))
+            observation = new_observation
+            if done:
+                break
+
+        # For debugging
+        all_episode_lists.append(episode_list)
+
+        # This cycle is the implementation of First-Visit MC.
+        first_visit_done = np.zeros((NUM_ACTIONS, NUM_STATES))
+        counter = 0
+        # For each state-action stored in the episode list it checks if
+        # it is the first visit and then estimates the return.
+        # This is the Evaluation step of the GPI.
+        old_state_action_matrix = state_action_matrix.copy()
+        for visit in episode_list:
+            state = visit[0][0]
+            action = int(visit[1])
+            if first_visit_done[action, state] == 0:
+                return_value = get_return(episode_list[counter:], gamma)
+                running_mean_matrix[action, state] += 1
+                state_action_matrix[action, state] += return_value
+                first_visit_done[action, state] = 1
+            counter += 1
+        # Policy update (Improvement)
+
+        if has_converged(old_state_action_matrix/running_mean_matrix, state_action_matrix/running_mean_matrix):
             break
 
-    # For debugging
-    all_episode_lists.append(episode_list)
+        policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
 
-    # This cycle is the implementation of First-Visit MC.
-    first_visit_done = np.zeros((NUM_ACTIONS, NUM_STATES))
-    counter = 0
-    # For each state-action stored in the episode list it checks if
-    # it is the first visit and then estimates the return.
-    # This is the Evaluation step of the GPI.
-    old_state_action_matrix = state_action_matrix.copy()
-    for visit in episode_list:
-        state = visit[0][0]
-        action = int(visit[1])
-        if first_visit_done[action, state] == 0:
-            return_value = get_return(episode_list[counter:], gamma)
-            running_mean_matrix[action, state] += 1
-            state_action_matrix[action, state] += return_value
-            first_visit_done[action, state] = 1
-        counter += 1
-    # Policy update (Improvement)
+        if epoch % print_epoch == 0:
+            print("State-Action matrix after " + str(epoch) + " iterations:")
+            print(state_action_matrix / running_mean_matrix)
+            print("Policy matrix after " + str(epoch + 1) + " iterations:")
+            print(policy_matrix)
+            describe_policy_matrix(policy_matrix, env)
 
-    if has_converged(old_state_action_matrix/running_mean_matrix, state_action_matrix/running_mean_matrix):
-        break
-
-    policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
-
-    if epoch % print_epoch == 0:
-        print("State-Action matrix after " + str(epoch) + " iterations:")
-        print(state_action_matrix / running_mean_matrix)
-        print("Policy matrix after " + str(epoch + 1) + " iterations:")
-        print(policy_matrix)
-        describe_policy_matrix(policy_matrix, env)
-
-# print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
-# print(state_action_matrix/running_mean_matrix)
-# print('Current Learnt Policy is ')
-# describe_policy_matrix(policy_matrix)
+    # print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
+    # print(state_action_matrix/running_mean_matrix)
+    # print('Current Learnt Policy is ')
+    # describe_policy_matrix(policy_matrix)
