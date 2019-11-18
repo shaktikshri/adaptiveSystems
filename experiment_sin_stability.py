@@ -5,32 +5,30 @@ from util import *
 
 # In[]:
 
-NUM_STATES = 7
-NUM_ACTIONS = 10
+NUM_STATES = 5
+NUM_ACTIONS = None
 MAX_EPISODE_LENGTH = 1000
 N_EPOCHS = 50000
 
 env = RandomVariable()
-gamma = 0.99
+gamma = 0.9
 print_epoch = 50
 
-# Define the state matrix, there are 7 possible states,
+# Define the state matrix, there are 5 possible states,
 # 2 states on the right side of origin
 # 2 states on the left side of origin
 # 1 state around the origin
-# Thus state 0 is – metric between [-inf, -10)
-# Thus state 1 is – metric between [-10, -5)
-# Thus state 2 is – metric between [-5, -3)
-# Thus state 3 is – metric between [-3, +3]
-# Thus state 4 is – metric between (+3, +5]
-# Thus state 5 is – metric between (-5, +10]
-# Thus state 6 is – metric between (+10, +inf)
-state_matrix = np.zeros((NUM_STATES,1))
-state_matrix[2] = 1 # this is the safe state, terminal state
-state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is again a terminal state
+# Thus state 0 is – metric between normal_value - (-inf, -0.1)
+# Thus state 1 is – metric between normal_value - [-0.1, -0.01)
+# Thus state 2 is – metric between [normal_value - 0.01] to [normal_value + 0.01]
+# Thus state 3 is – metric between normal_value + (0.01, +0.1]
+# Thus state 4 is – metric between normal_value + (+0.1, +inf)
+state_matrix = np.zeros((NUM_STATES, 1))
+state_matrix[0] = state_matrix[-1] = 1 # These are the incident state, which is again a terminal state
 # We dont need the state matrix since the state depends purely on the value of the metric
 # state matrix is depicted only for your understanding
 
+# TODO : Define the action matrix
 # There are 10 possible actions
 # Entry 0 : In State 1: Add 10 to the metric
 # Entry 1 : In State 2: Add 5 to the metrix
@@ -40,6 +38,7 @@ state_matrix[0] = state_matrix[6] = 1 # These are the incident state, which is a
 action_matrix = np.linspace(start=-10, stop=10, num=NUM_ACTIONS)
 env.set_action_to_value_mapping(action_matrix)
 
+# TODO: Decide on the transition matrix after deciding the actions possible
 # We need to define the transition matrix as well. Now the transition matrix will basically be a
 # probabilities over different actions. Example if the agent decides that it needs to do an addition to the current
 # value, then there's a probability over what values should it choose for the addition. Similarly for subtraction
@@ -70,14 +69,13 @@ transition_matrix = np.array([
 # State 1 and 5 are critical -> reward -0.5
 # State 2 and 4 are unsafe -> reward -0.1
 reward_matrix = np.array([
-    -1, -0.1, -0.05, 10, -0.05, -0.1, -1
+    -1, -0.04, +1, -0.04, -1
 ])
 env.set_reward_matrix(reward_matrix)
 
 # Random policy matrix
 policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,))
-policy_matrix[0] = policy_matrix[6] = -1 # these are the terminal states
-policy_matrix[3] = -1 # these are the terminal states
+policy_matrix[0] = policy_matrix[-1] = -1 # these are the terminal states
 
 # State-action matrix or the Q values (init to zeros or to random values)
 state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
@@ -95,7 +93,7 @@ all_episode_lists = list()
 
 def perform_generalized_policy_iteration():
     global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, state_action_matrix, \
-        policy_matrix, running_mean_matrix, MAX_EPISODE_LENGTH, env
+        policy_matrix, running_mean_matrix, MAX_EPISODE_LENGTH, env, all_episode_lists
 
     epoch = 0
     gamma = 0.9
