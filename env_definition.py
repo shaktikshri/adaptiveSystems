@@ -34,30 +34,33 @@ class RandomVariable:
         self.evaluate_state()
         return self.state, self.curr_val
 
-    def evaluate_state(self):
+    def evaluate_state(self, action_value, t):
         """
-        defined 7 states,
-        (State 3)       Safe : value hops between [-3, +3]
-        (State 2 and 4) unsafe : value between [-5,-3) and (+3, +5]
-        (State 1 and 5) critical : values between [-10, -5) and (+5, +10]
-        (State 0 and 6) incident : values between (-inf, -10) and (+10, +inf)
-        Out of these incident and safe are the terminal states
-        the episode will end at safe (meaning the value has stabilized) or
-        the episode will end at incident (meaning there is nothing you can do
-        to stabilize the value in the incident state, and you failed)
+        defined 5 states,
+        (State 2)       Safe : value hops between [-1, +1] for the taken sin function
+        (State 1 and 3) unsafe : value between [-1.01,-1) and (+1, +1.01]
+        (State 0 and 4) critical : values between [-inf, -1.01) and (+1.01, +inf]
+        Out of these only 'critical' are the terminal states
+        the episodes will end at it (meaning there is nothing you can do
+        to stabilize the value in the critical state, and you failed)
         :return:
         """
-        if abs(self.curr_val) < self.safe_mod:
+        difference = self.f(t) - self.f(self.curr_val+action_value)
+        if abs(difference) < self.safe_mod:
+            self.state = 2
+        elif difference < self.unsafe_mod:
+            # difference is positive, thus this is the case of underestimation
             self.state = 3
-        elif abs(self.curr_val) < self.unsafe_mod:
-            self.state = 2 if self.curr_val<0 else 4
-        elif abs(self.curr_val) < self.critical_mod:
-            self.state = 1 if self.curr_val<0 else 5
+        elif difference > -self.unsafe_mod:
+            # difference is negative, thus this is the case of overestimation
+            self.state = 1
         else:
-            self.state = 0 if self.curr_val<0 else 6
+            # else you've failed!
+            self.state = 0 if difference > 0 else 4
 
-    def f(self, x, mean, std):
-        return np.sin(x) + np.random.normal(loc=mean, scale=std)
+    def f(self, x, mean=0.0, std=0.0):
+        # return np.sin(x) + np.random.normal(loc=mean, scale=std)
+        return np.sin(x) + np.random.choice(self.noise_array)
 
     def get_value(self, mean=None, std=None):
         if not mean and not std:
