@@ -68,7 +68,9 @@ for episode in range(TRAIN_EPISODES):
     time = 0
     state, function_value = env.reset(exploring_starts=True)
     this_episode = list()
-    while not done:
+    count = 0
+    while not done or count>100: # cutoff the max length of an episode to 100
+        count += 1
         # draw actions as per epsilon greedy
         choice = np.random.choice(2, p=[epsilon, 1-epsilon])
         if choice == 0:
