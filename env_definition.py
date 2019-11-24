@@ -46,9 +46,9 @@ class RandomVariable:
         to stabilize the value in the critical state, and you failed)
         :return:
         """
-        original, noisy, corrected = self.f(t, action_value)
+        original, noisy, self.curr_val = self.f(t, action_value)
         # its as if we knew the function which has to be approximated
-        difference = original - corrected
+        difference = original - self.curr_val
         if abs(difference) < self.safe_mod:
             self.state = 2
         elif difference < self.unsafe_mod:
