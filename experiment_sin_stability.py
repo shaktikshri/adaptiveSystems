@@ -73,7 +73,7 @@ for episode in range(TRAIN_EPISODES):
         choice = np.random.choice(2, p=[epsilon, 1-epsilon])
         if choice == 0:
             # take random action
-            action = np.random.choice(action_matrix)
+            action = np.random.choice(len(action_matrix))
         else:
             action = np.argmax(Q[env.state])
         this_episode.append([state, action])
