@@ -27,11 +27,12 @@ class RandomVariable:
         if exploring_starts:
             # Randomly select a current value
             low, high = -self.unsafe_mod, self.unsafe_mod
-            self.curr_val = np.random.uniform(low=low, high=high)
+            # Pick up a random deviation from the original start value
+            deviation = np.random.uniform(low=low, high=high)
         else:
-            self.curr_val = 0
+            deviation = 0
         # Set the state according to the metric
-        self.evaluate_state(0, 0)
+        self.evaluate_state(deviation, 0)
         return self.state, self.curr_val
 
     def evaluate_state(self, action_value, t):
@@ -45,7 +46,9 @@ class RandomVariable:
         to stabilize the value in the critical state, and you failed)
         :return:
         """
-        difference = self.f(t) - self.f(self.curr_val+action_value)
+        original, noisy, corrected = self.f(t, action_value)
+        # its as if we knew the function which has to be approximated
+        difference = original - corrected
         if abs(difference) < self.safe_mod:
             self.state = 2
         elif difference < self.unsafe_mod:
@@ -58,9 +61,11 @@ class RandomVariable:
             # else you've failed!
             self.state = 0 if difference > 0 else 4
 
-    def f(self, x, mean=0.0, std=0.0):
-        # return np.sin(x) + np.random.normal(loc=mean, scale=std)
-        return np.sin(x) + np.random.choice(self.noise_array)
+    def f(self, x, corrective_value=0, mean=0.0, std=0.0):
+        # the function adds a noise, and our job is to figure out the corrective value for each of the possible noise
+        original = np.sin(x)
+        noise = np.random.choice(self.noise_array)
+        return original, original + noise, original + noise + corrective_value
 
     def is_terminal_state(self):
         return self.state == 0 or self.state == 4
