@@ -39,7 +39,7 @@ env.set_action_to_value_mapping(action_matrix)
 # State 1 and 5 are critical -> reward -0.5
 # State 2 and 4 are unsafe -> reward -0.1
 reward_matrix = np.array([
-    -1, -0.04, +1, -0.04, -1
+    -10, -0.04, +1, -0.04, -10
 ])
 env.set_reward_matrix(reward_matrix)
 
@@ -58,7 +58,7 @@ timestep = 0.1
 epsilon = 0.1
 alpha = 0.1
 gamma = 0.9
-print_episode = 50
+print_episode = 1
 difference = 10
 very_small = 0.001
 TRAIN_EPISODES = 100
@@ -69,7 +69,7 @@ for episode in range(TRAIN_EPISODES):
     state, function_value = env.reset(exploring_starts=True)
     this_episode = list()
     count = 0
-    while not done or count>100: # cutoff the max length of an episode to 100
+    while count<100 and not done: # cutoff the max length of an episode to 100
         count += 1
         # draw actions as per epsilon greedy
         choice = np.random.choice(2, p=[epsilon, 1-epsilon])
@@ -86,11 +86,10 @@ for episode in range(TRAIN_EPISODES):
                 reward + gamma*np.max(Q[new_state]) - Q[state, action]
         )
         state = new_state
-        difference = np.max(Q_new - Q)
+        difference = np.sum(np.absolute(Q_new - Q))
         Q = np.copy(Q_new)
         time += timestep
 
-    if episode % print_episode:
         print('Max difference in Q : ', difference)
         print('Episode : ', episode)
 
