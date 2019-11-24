@@ -34,32 +34,8 @@ state_matrix[0] = state_matrix[-1] = 1 # These are the incident state, which is 
 action_matrix = np.linspace(start=-1, stop=1, num=NUM_ACTIONS)
 env.set_action_to_value_mapping(action_matrix)
 
-# TODO: Decide on the transition matrix after deciding the actions possible
-# We need to define the transition matrix as well. Now the transition matrix will basically be a
-# probabilities over different actions. Example if the agent decides that it needs to do an addition to the current
-# value, then there's a probability over what values should it choose for the addition. Similarly for subtraction
-# So if agent decides to execute action i, then action i has probability 0.8, i-1 has 0.1, i-2 has 0.1
-transition_matrix = np.array([
-    [
-        []
-    ],
-    [
-        []
-    ],
-    [
-        []
-    ],
-    [
-        []
-    ],
-    [
-        []
-    ],
-    [
-        []
-    ]
-])
-
+# We dont need to define the transition matrix as this is a model free Q learning via TD(0) updates. LOL why didnt
+# I understand this earlier?
 # define the reward matrix as per the states,
 # State 0 and 6 are incident -> reward -1
 # State 1 and 5 are critical -> reward -0.5
