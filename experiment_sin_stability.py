@@ -6,13 +6,11 @@ from util import *
 # In[]:
 
 NUM_STATES = 5
-NUM_ACTIONS = None
+NUM_ACTIONS = 10
 MAX_EPISODE_LENGTH = 1000
 N_EPOCHS = 50000
 
 env = RandomVariable()
-gamma = 0.9
-print_epoch = 50
 
 # Define the state matrix, there are 5 possible states,
 # 2 states on the right side of origin
@@ -52,10 +50,40 @@ env.set_reward_matrix(reward_matrix)
 
 # State-action matrix or the Q values (init to zeros or to random values)
 Q = np.random.random_sample((NUM_STATES, NUM_ACTIONS))
-
+Q_new = np.random.random_sample((NUM_STATES, NUM_ACTIONS))
 all_episode_lists = list()
 
 # starting with Q learning now.
+timestep = 0.1
+epsilon = 0.1
+alpha = 0.1
+gamma = 0.9
+print_epoch = 50
+difference = 10
+very_small = 0.001
+
+while difference > very_small:
+    done = False
+    time = 0
+    state, function_value = env.reset(exploring_starts=True)
+    while not done:
+        # draw actions as per epsilon greedy
+        choice = np.random.choice(2, p=[epsilon, 1-epsilon])
+        if choice == 0:
+            # take random action
+            action = np.random.choice(action_matrix)
+        else:
+            action = np.argmax(Q[env.state])
+        new_state, new_function_value, reward, done = env.step(action, time)
+        if done:
+            break
+
+        Q_new[state, action] = Q[state, action] + alpha * (
+                reward + gamma*np.max(Q[new_state]) - Q[state, action]
+        )
+        difference = np.max(Q_new - Q)
+        Q = np.copy(Q_new)
+        time += timestep
 
 
 def perform_generalized_policy_iteration():
