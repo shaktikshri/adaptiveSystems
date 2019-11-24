@@ -45,26 +45,21 @@ reward_matrix = np.array([
 ])
 env.set_reward_matrix(reward_matrix)
 
+# We dont need the policy matrix as of now, we'll do a Q learning first
 # Random policy matrix
-policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,))
-policy_matrix[0] = policy_matrix[-1] = -1 # these are the terminal states
+# policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,))
+# policy_matrix[0] = policy_matrix[-1] = -1 # these are the terminal states
 
 # State-action matrix or the Q values (init to zeros or to random values)
-state_action_matrix = np.random.random_sample((NUM_ACTIONS, NUM_STATES))
-running_mean_matrix = np.full((NUM_ACTIONS, NUM_STATES), 1.0e-12)
-# one row of all states for each action, thus NUM_STATES columns for each row
-
-# IMPORTANT
-# reward_matrix, policy_matrix, state_action_matrix, action_to_value_mapping
-# and running_mean_matrix are the only ones that we need
-# Since the state depends on the current metric value only, we dont need to store the state_matrix in our env variable
+Q = np.random.random_sample((NUM_STATES, NUM_ACTIONS))
 
 all_episode_lists = list()
-# for epoch in range(N_EPOCHS):
+
+# starting with Q learning now.
 
 
 def perform_generalized_policy_iteration():
-    global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, state_action_matrix, \
+    global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, Q, \
         policy_matrix, running_mean_matrix, MAX_EPISODE_LENGTH, env, all_episode_lists
 
     epoch = 0
@@ -101,26 +96,26 @@ def perform_generalized_policy_iteration():
         # For each state-action stored in the episode list it checks if
         # it is the first visit and then estimates the return.
         # This is the Evaluation step of the GPI.
-        old_state_action_matrix = state_action_matrix.copy()
+        old_state_action_matrix = Q.copy()
         for visit in episode_list:
             state = visit[0][0]
             action = int(visit[1])
             if first_visit_done[action, state] == 0:
                 return_value = get_return(episode_list[counter:], gamma)
                 running_mean_matrix[action, state] += 1
-                state_action_matrix[action, state] += return_value
+                Q[action, state] += return_value
                 first_visit_done[action, state] = 1
             counter += 1
         # Policy update (Improvement)
 
-        if has_converged(old_state_action_matrix/running_mean_matrix, state_action_matrix/running_mean_matrix):
+        if has_converged(old_state_action_matrix/running_mean_matrix, Q / running_mean_matrix):
             break
 
-        policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
+        policy_matrix = update_policy(episode_list, policy_matrix, Q / running_mean_matrix)
 
         if epoch % print_epoch == 0:
             print("State-Action matrix after " + str(epoch) + " iterations:")
-            print(state_action_matrix / running_mean_matrix)
+            print(Q / running_mean_matrix)
             print("Policy matrix after " + str(epoch + 1) + " iterations:")
             print(policy_matrix)
             describe_policy_matrix(policy_matrix, env)
