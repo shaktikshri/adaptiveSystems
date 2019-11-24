@@ -2,12 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from env_definition import RandomVariable
 from util import *
+import time
 
 # In[]:
 
 NUM_STATES = 5
 NUM_ACTIONS = 10
-MAX_EPISODE_LENGTH = 1000
 N_EPOCHS = 50000
 
 env = RandomVariable()
@@ -58,10 +58,11 @@ timestep = 0.1
 epsilon = 0.1
 alpha = 0.1
 gamma = 0.9
-print_episode = 1
+print_episode = 10
 difference = 10
-very_small = 0.001
-TRAIN_EPISODES = 100
+very_small = 1e-5
+TRAIN_EPISODES = 500
+MAX_EPISODE_LENGTH = 1000
 
 for episode in range(TRAIN_EPISODES):
     done = False
@@ -69,7 +70,7 @@ for episode in range(TRAIN_EPISODES):
     state, function_value = env.reset(exploring_starts=True)
     this_episode = list()
     count = 0
-    while count<100 and not done: # cutoff the max length of an episode to 100
+    while count<MAX_EPISODE_LENGTH and not done: # cutoff the max length of an episode to 100
         count += 1
         # draw actions as per epsilon greedy
         choice = np.random.choice(2, p=[epsilon, 1-epsilon])
@@ -78,9 +79,10 @@ for episode in range(TRAIN_EPISODES):
             action = np.random.choice(len(action_matrix))
         else:
             action = np.argmax(Q[env.state])
-        this_episode.append([state, action])
         new_state, new_function_value, reward, done = env.step(action, time)
+        this_episode.append([new_function_value, action])
         if done:
+            flag = 1
             break
         Q_new[state, action] = Q[state, action] + alpha * (
                 reward + gamma*np.max(Q[new_state]) - Q[state, action]
@@ -89,7 +91,8 @@ for episode in range(TRAIN_EPISODES):
         difference = np.sum(np.absolute(Q_new - Q))
         Q = np.copy(Q_new)
         time += timestep
-
+    all_episode_lists.append(this_episode)
+    if episode % print_episode:
         print('Max difference in Q : ', difference)
         print('Episode : ', episode)
 
