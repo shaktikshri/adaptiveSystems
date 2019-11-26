@@ -60,6 +60,7 @@ class RandomVariable:
         else:
             # else you've failed!
             self.state = 0 if difference > 0 else 4
+        return difference
 
     def f(self, x, corrective_value=0, mean=0.0, std=0.0):
         # the function adds a noise, and our job is to figure out the corrective value for each of the possible noise
@@ -85,7 +86,7 @@ class RandomVariable:
             # Get the value to be added/subtracted corresponding to this action
             # from the action_to_value_mapping
             action_value = self.action_to_value_mapping[action]
-            self.evaluate_state(action_value, time)
+            difference = self.evaluate_state(action_value, time)
             done = self.is_terminal_state()
-            return self.state, self.curr_val, self.reward_matrix[self.state], done
+            return self.state, self.curr_val, self.reward_matrix[self.state], done, difference
 
