@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Qt5Agg')
 from env_definition import RandomVariable
 from util import *
 import time
@@ -57,12 +59,15 @@ all_episode_lists = list()
 timestep = 0.1
 epsilon = 0.1
 alpha = 0.1
-gamma = 0.9
+gamma = 0.1
 print_episode = 10
 difference = 10
 very_small = 1e-5
-TRAIN_EPISODES = 500
+TRAIN_EPISODES = 100
 MAX_EPISODE_LENGTH = 1000
+list_of_actions = list()
+
+master_difference_list = list()
 
 for episode in range(TRAIN_EPISODES):
     done = False
@@ -70,6 +75,8 @@ for episode in range(TRAIN_EPISODES):
     state, function_value = env.reset(exploring_starts=True)
     this_episode = list()
     count = 0
+    # this list will help us see how the difference in the actual function value and the addition is changing over time
+    difference_list = list()
     while count<MAX_EPISODE_LENGTH and not done: # cutoff the max length of an episode to 100
         count += 1
         # draw actions as per epsilon greedy
@@ -79,8 +86,13 @@ for episode in range(TRAIN_EPISODES):
             action = np.random.choice(len(action_matrix))
         else:
             action = np.argmax(Q[env.state])
-        new_state, new_function_value, reward, done = env.step(action, time)
-        this_episode.append([new_function_value, action])
+        list_of_actions.append(env.action_to_value_mapping[action])
+        new_state, new_function_value, reward, done, diff_of_function_values = env.step(action, time)
+        this_episode.append([new_function_value, action, state])
+
+        # this list will help us see how the difference in the actual function value and the
+        # addition is changing over time
+        difference_list.append(diff_of_function_values)
         if done:
             flag = 1
             break
@@ -92,9 +104,18 @@ for episode in range(TRAIN_EPISODES):
         Q = np.copy(Q_new)
         time += timestep
     all_episode_lists.append(this_episode)
+    master_difference_list.append(difference_list)
     if episode % print_episode:
         print('Max difference in Q : ', difference)
         print('Episode : ', episode)
+
+mean_diff = list()
+for each_episode in master_difference_list:
+    mean_diff.append(np.sum(each_episode)/len(each_episode))
+plt.figure('mean diff1')
+plt.plot(mean_diff)
+plt.legend('gamma = '+str(gamma))
+plt.show()
 
 # def perform_generalized_policy_iteration():
 #     global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, Q, \
