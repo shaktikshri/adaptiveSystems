@@ -131,18 +131,28 @@ Ta_to_be_used = np.array([T_s_a_sbar[s, next_highest_values.flatten()[s]] for s 
 # next best action for each of the state
 P_a = Ta_to_be_used
 
-# TODO : we'll have to find out the critical gamma as well, the point after which all reward tend to be zero
-gamma = 0.2
+# TODO : we'll have to find out the critical lambda_val as well, the point after which all reward tend to be zero
+lambda_val = 0
 # Get a random reward
-# TODO : we'll need to check if a random function can be provided while optimizing the Linear Program
-R = np.random.random((25,1))
-
+Rmax = 10
+Rmin = 0
 # In[]:
 # We are now ready to formulate this as a LinearProgram
-import pulp
 
+from pulp import *
+prob = LpProblem('IRL_Reward', LpMaximize)
+RANGE = range(25)
+R = LpVariable.dicts('R', RANGE)
+for i in R.keys():
+     R[i].lowBound = Rmin
+     R[i].upBound = Rmax
+
+complicated = np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)
 # We dont need min in the objective function because we have already found the next best action for each
-# of the state and have used it in P_a
-np.sum(np.dot(P_a1 - P_a, np.dot(np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1), R)))
-# sum can be taken since resulting will be a 25*1 vector where each entry represents the P_a1[i] - P_a[i] * V
-# Thus we only need to take the sum of it
+prob += lpSum([lpDot(P_a1[i] - P_a[i], lpDot(complicated, [R[el1] for el1 in range(25)]))
+                - lambda_val*lpSum([R[el2] for el2 in range(25)])
+               for i in range(25) ])
+prob += lpDot(P_a1 - P_a, lpDot(complicated, [R[el3] for el3 in range(25)])) >= 0, "greater than or equal to 0 constraint"
+
+
+prob.solve()
