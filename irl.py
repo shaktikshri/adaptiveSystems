@@ -131,24 +131,18 @@ Ta_to_be_used = np.array([T_s_a_sbar[s, next_highest_values.flatten()[s]] for s 
 # next best action for each of the state
 P_a = Ta_to_be_used
 
-
-# TODO: Need to check if this implementation of Pa is correct or not
-# all_other_as = policy.flatten()
-# for a in range(4):
-#     P_a = np.array([T_s_a_sbar[s, a] for s in range(25) if policy.flatten()[s] != a])
-
-
-
-# Need to formulate an linear program
-import pulp
 # TODO : we'll have to find out the critical gamma as well, the point after which all reward tend to be zero
 gamma = 0.2
-
 # Get a random reward
 # TODO : we'll need to check if a random function can be provided while optimizing the Linear Program
 R = np.random.random((25,1))
 
-# the objective function is,
-for i in range(25):
-    # TODO : Axis has to be decided
-    np.min((P_a1[i] - P_a[i])*(np.dot(np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)), R), axis=2)
+# In[]:
+# We are now ready to formulate this as a LinearProgram
+import pulp
+
+# We dont need min in the objective function because we have already found the next best action for each
+# of the state and have used it in P_a
+np.sum(np.dot(P_a1 - P_a, np.dot(np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1), R)))
+# sum can be taken since resulting will be a 25*1 vector where each entry represents the P_a1[i] - P_a[i] * V
+# Thus we only need to take the sum of it
