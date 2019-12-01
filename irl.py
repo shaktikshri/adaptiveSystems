@@ -50,8 +50,8 @@ policy_list = list()
 for ntimes in range(10):
 
     reward = np.full((5,5), -0.04)
-    reward[-1,-1] = 1
-    reward[-2, -1] = -10
+    reward[-1, -1] = 1
+    reward[-2, -1] = -3
     Q = np.random.random((5,5,4))
     Q_new = Q.copy()
     gamma = 0.9
