@@ -52,6 +52,20 @@ for row in range(5):
         Q[row, col, a] = reward[row, col] + gamma * summation
 
 
+def print_policy(q_function):
+    shape = q_function.shape
+    policy_string = ''
+    for row in range(shape[0]):
+        for col in range(shape[1]):
+            action = np.argmax(q_function[row, col, :])
+            if(action == 0): policy_string += " ^  "
+            elif(action == 1): policy_string += " >  "
+            elif(action == 2): policy_string += " v  "
+            elif(action == 3): policy_string += " <  "
+        policy_string += '\n'
+    print(policy_string)
+
+
 # In[]:
 # Implementation of Finite State Space IRL.
 # See the paper Algorithms for Inverse Reinforcement Learning Section 3
