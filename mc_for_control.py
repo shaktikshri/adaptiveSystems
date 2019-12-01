@@ -89,7 +89,7 @@ policy_matrix[1, 1] = np.NaN  # NaN for the obstacle at (1,1)
 policy_matrix[0, 3] = policy_matrix[1,3] = -1  # No action (terminal states)
 
 # State-action matrix or the Q values (init to zeros or to random values)
-state_action_matrix = np.random.random_sample((4, 12))
+Q = np.random.random_sample((4, 12))
 running_mean_matrix = np.full((4, 12), 1.0e-12)
 # one row of all states for each action, thus 12 columns for each row
 n_epochs = 500000
@@ -129,18 +129,18 @@ for epoch in range(n_epochs):
         if first_visit_done[row, column] == 0:
             return_value = get_return(episode_list[counter:], gamma)
             running_mean_matrix[row, column] += 1
-            state_action_matrix[row, column] += return_value
+            Q[row, column] += return_value
             first_visit_done[row, column] = 1
         counter += 1
     # Policy update (Improvement)
-    policy_matrix = update_policy(episode_list, policy_matrix, state_action_matrix/running_mean_matrix)
+    policy_matrix = update_policy(episode_list, policy_matrix, Q / running_mean_matrix)
 
     if epoch % print_epoch == 0:
         print("State-Action matrix after " + str(epoch) + " iterations:")
-        print(state_action_matrix / running_mean_matrix)
+        print(Q / running_mean_matrix)
         print("Policy matrix after " + str(epoch + 1) + " iterations:")
         print(policy_matrix)
         print_policy(policy_matrix, (3,4))
 
 print("Utility matrix after " + str(n_epochs) + " iterations: ")
-print(state_action_matrix)
+print(Q / running_mean_matrix)
