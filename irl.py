@@ -114,8 +114,41 @@ V_to_be_used = np.max(Q, axis=2).flatten().reshape(25, -1)
 policy = Q.argmax(axis=2)
 T_to_be_used = np.array([T_s_a_sbar[s, policy.flatten()[s]] for s in range(25)])
 # T_to_be_used is a 25*25 2d matrix, denoting the probability from each state to the next state under the optimal policy
+P_a1 = T_to_be_used
+
+# P_a1 is 25*25
+# To get P_a we can pick up the 2nd best action from the policy
+best_policy = Q.argmax(axis=2)
+# Now need to remove the Q values at these best indices, thus set them to some large negative value.
+# and then take the argmax again to get the indices of the 2nd largest Q value, or the 2nd best action
+
+value_to_be_replaced = Q.min() - 10 # this value can be replaced in place of the maximum Q values
+Q_dummy = Q.copy()
+Q_dummy[Q.max(axis=2).reshape(5,5,-1) == Q] = value_to_be_replaced
+next_highest_values = Q_dummy.argmax(axis=2)
+Ta_to_be_used = np.array([T_s_a_sbar[s, next_highest_values.flatten()[s]] for s in range(25)])
+# Ta_to_be_used is a 25*25 2d matrix, denoting the probability from each state to the next state under the
+# next best action for each of the state
+P_a = Ta_to_be_used
+
+
+# TODO: Need to check if this implementation of Pa is correct or not
+# all_other_as = policy.flatten()
+# for a in range(4):
+#     P_a = np.array([T_s_a_sbar[s, a] for s in range(25) if policy.flatten()[s] != a])
 
 
 
 # Need to formulate an linear program
 import pulp
+# TODO : we'll have to find out the critical gamma as well, the point after which all reward tend to be zero
+gamma = 0.2
+
+# Get a random reward
+# TODO : we'll need to check if a random function can be provided while optimizing the Linear Program
+R = np.random.random((25,1))
+
+# the objective function is,
+for i in range(25):
+    # TODO : Axis has to be decided
+    np.min((P_a1[i] - P_a[i])*(np.dot(np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)), R), axis=2)
