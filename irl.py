@@ -4,10 +4,12 @@
 import numpy as np
 
 # In[]:
+
 ROWS = 2
 COLUMNS = 2
 ACTIONS = 4
 # form the T matrix
+
 T_s_a_sbar = np.zeros(shape=(ROWS*COLUMNS, ACTIONS, ROWS*COLUMNS))
 
 # ROWS*COLUMNS gridworld same as the cleaning robot. With start at (0,0) and end at (ROWS-1,COLUMNS-1)
@@ -53,7 +55,7 @@ def print_policy(q_function):
 # for ntimes in range(10):
 
 reward = np.full((ROWS,COLUMNS), -0.04)
-reward[-1, -1] = 1
+reward[-1, -1] = +1
 reward[-2, -1] = -3
 Q = np.random.random((ROWS,COLUMNS,ACTIONS))
 Q_new = Q.copy()
@@ -109,6 +111,7 @@ print_policy(Q)
 # See the paper Algorithms for Inverse Reinforcement Learning Section 3
 
 # Flattening the Q matrix to be used
+# since V(s) = max_a(Q(s,a))
 V_to_be_used = np.max(Q, axis=2).flatten().reshape(ROWS*COLUMNS, -1)
 # V_to_be_used is a ROWS*COLUMNS*1 vector having the utility of each of the state
 
@@ -134,33 +137,50 @@ Ta_to_be_used = np.array([T_s_a_sbar[s, next_highest_values.flatten()[s]] for s 
 # next best action for each of the state
 P_a = Ta_to_be_used
 
-# Get a random reward
-Rmax = 10
-Rmin = 0
+# Set the reward limit
+Rmax = 3
 
 # In[]:
 from pulp import *
 import matplotlib.pyplot as plt
+import matplotlib
+# matplotlib.use('Qt5Agg')
+from plot3d import figure
 # We are now ready to formulate this as a LinearProgram
-for lambda_val in np.linspace(0,1.5,num=10):
+# TODO : for lambda_val in np.linspace(0,1.5,num=10): Do an exhaustive search for the critical lambda
+for lambda_val in [0.1]: # [0, 0.1, 0.8, 1.2]:
     prob = LpProblem('IRL_Reward', LpMaximize)
     RANGE = range(ROWS*COLUMNS)
     R = LpVariable.dicts('R', RANGE)
     for i in R.keys():
-         R[i].lowBound = Rmin
+         R[i].lowBound = -Rmax
          R[i].upBound = Rmax
 
+    # TODO : vary gamma and see if there's any better result
     complicated = np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)
+
+    # TODO : the objective function is different from the one calculated analytically, find out why
     # We dont need min in the objective function because we have already found the next best action for each
     prob += np.sum([np.dot(P_a1[i] - P_a[i], np.dot(complicated, np.array([R[el1] for el1 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS,1)))
-                    - lambda_val*lpSum([R[el2] for el2 in range(ROWS*COLUMNS)])
+                    - lambda_val*np.sum([R[el2] for el2 in range(ROWS*COLUMNS)])
                    for i in range(ROWS*COLUMNS) ])
     expression = np.dot(P_a1 - P_a, np.dot(complicated, np.array([R[el3] for el3 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS,1))) # "greater than or equal to 0 constraint"
     for el in expression:
         prob += el[0] >= 0
 
     prob.solve()
-    print('Lambda : ',lambda_val, [value(R[el]) for el in range(ROWS*COLUMNS)])
-    plt.plot([value(R[el]) for el in range(ROWS*COLUMNS)], label='lambda : '+str(lambda_val))
-plt.plot(reward.flatten(), '--', label='True Reward')
-plt.legend()
+    print('Lambda : ', lambda_val, [value(R[el]) for el in range(ROWS*COLUMNS)])
+    print('Value of the objective function : ', value(prob.objective))
+    found_rs = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
+    print('Value calculated analytically : ', np.sum([np.dot(P_a1[i] - P_a[i], np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1)))
+                    - lambda_val*np.sum(np.abs(found_rs))
+                   for i in range(ROWS*COLUMNS) ]))
+    print('Expected coefficients of R in the objective function is :', np.sum(np.dot(P_a1-P_a, complicated), axis=0) + lambda_val)
+    print('Actual coefficients of R in the objective function is   :', prob.objective)
+    # plt.plot([value(R[el]) for el in range(ROWS*COLUMNS)], label='lambda : '+str(lambda_val))
+    found_rewards = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
+    figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
+
+figure(np.arange(ROWS), np.arange(COLUMNS), reward, 'True Reward Distribution')
+# plt.plot(reward.flatten(), '--', label='True Reward')
+# plt.legend()

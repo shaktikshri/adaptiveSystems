@@ -7,7 +7,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
 
 
-def figure(X=None, Y=None, Z=None):
+def figure(X=None, Y=None, Z=None, title=None):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
 
@@ -20,17 +20,18 @@ def figure(X=None, Y=None, Z=None):
     if Z is None:
         R = np.sqrt(X**2 + Y**2)
         Z = np.sin(R)
-
+    if title is None:
+        title = 'sin surface'
     # Plot the surface.
     surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                            linewidth=0, antialiased=False)
 
     # Customize the z axis.
-    ax.set_zlim(-1.01, 1.01)
-    ax.zaxis.set_major_locator(LinearLocator(10))
-    ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+    # ax.set_zlim(-1.01, 1.01)
+    # ax.zaxis.set_major_locator(LinearLocator(10))
+    # ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
 
     # Add a color bar which maps values to colors.
     fig.colorbar(surf, shrink=0.5, aspect=5)
-
+    plt.title(title)
     plt.show()
