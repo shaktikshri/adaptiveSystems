@@ -161,11 +161,12 @@ for lambda_val in [0.1]: # [0, 0.1, 0.8, 1.2]:
 
     # TODO : the objective function is different from the one calculated analytically, find out why
     # We dont need min in the objective function because we have already found the next best action for each
-    prob += np.sum([np.dot(P_a1[i] - P_a[i], np.dot(complicated, np.array([R[el1] for el1 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS,1)))
-                    - lambda_val*np.sum([R[el2] for el2 in range(ROWS*COLUMNS)])
-                   for i in range(ROWS*COLUMNS) ])
-    expression = np.dot(P_a1 - P_a, np.dot(complicated, np.array([R[el3] for el3 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS,1))) # "greater than or equal to 0 constraint"
-    for el in expression:
+
+    prob += lpSum(np.dot(np.dot(P_a1 - P_a, complicated), np.array([R[el1] for el1 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1)))\
+                  + lambda_val*(R[0] + R[1] + R[2] + R[3])
+
+    expression2 = np.dot(P_a1 - P_a, np.dot(complicated, np.array([R[el3] for el3 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1))) # "greater than or equal to 0 constraint"
+    for el in expression2:
         prob += el[0] >= 0
 
     prob.solve()
