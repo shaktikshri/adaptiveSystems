@@ -148,40 +148,53 @@ import matplotlib
 from plot3d import figure
 # We are now ready to formulate this as a LinearProgram
 # TODO : for lambda_val in np.linspace(0,1.5,num=10): Do an exhaustive search for the critical lambda
-for lambda_val in [0.1]: # [0, 0.1, 0.8, 1.2]:
+for lambda_val in np.linspace(0,2,num=100):
+# for lambda_val in [0, 0.1, 0.4, 0.8, 1.2]:
     prob = LpProblem('IRL_Reward', LpMaximize)
     RANGE = range(ROWS*COLUMNS)
     R = LpVariable.dicts('R', RANGE)
+
+    # U is introduced to handle the summation of mod R
+    # TODO : introduce additional documentation here in case this works
+    U = LpVariable.dicts('U', RANGE)
+
     for i in R.keys():
-         R[i].lowBound = -Rmax
-         R[i].upBound = Rmax
+        R[i].lowBound = -Rmax
+        R[i].upBound = Rmax
 
     # TODO : vary gamma and see if there's any better result
     complicated = np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)
 
     # TODO : the objective function is different from the one calculated analytically, find out why
     # We dont need min in the objective function because we have already found the next best action for each
-
     prob += lpSum(np.dot(np.dot(P_a1 - P_a, complicated), np.array([R[el1] for el1 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1)))\
-                  + lambda_val*(R[0] + R[1] + R[2] + R[3])
+                  - lambda_val*(U[0] + U[1] + U[2] + U[3])
+    # TODO : Replace the U[0], [1], ... with a loop and lpSum
 
     expression2 = np.dot(P_a1 - P_a, np.dot(complicated, np.array([R[el3] for el3 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1))) # "greater than or equal to 0 constraint"
     for el in expression2:
-        prob += el[0] >= 0
+        prob += el[0] >= 0, "Vector >= 0"+str(el)
+
+    for i in U.keys():
+        prob += U[i] >= R[i], "1st constraint for mod "+str(U[i])
+        prob += U[i] >= -R[i], "2nd constraint for mod "+str(U[i])
 
     prob.solve()
     print('Lambda : ', lambda_val, [value(R[el]) for el in range(ROWS*COLUMNS)])
     print('Value of the objective function : ', value(prob.objective))
     found_rs = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
-    print('Value calculated analytically : ', np.sum([np.dot(P_a1[i] - P_a[i], np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1)))
-                    - lambda_val*np.sum(np.abs(found_rs))
-                   for i in range(ROWS*COLUMNS) ]))
-    print('Expected coefficients of R in the objective function is :', np.sum(np.dot(P_a1-P_a, complicated), axis=0) + lambda_val)
-    print('Actual coefficients of R in the objective function is   :', prob.objective)
+
+    # TODO : Check if this formula is correct or not
+    print('Value calculated analytically : ', np.sum(np.dot(P_a1 - P_a, np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1))), axis=0)
+                    - lambda_val*np.sum(np.abs(found_rs)))
+
+    # TODO : Check why the expected and the ones calculated are different
+    print('Expected coefficients are : R {} U {}'.format(np.sum(np.dot(P_a1-P_a, complicated), axis=0), -lambda_val))
+    print('Actual coefficients are   : {}'.format(prob.objective))
     # plt.plot([value(R[el]) for el in range(ROWS*COLUMNS)], label='lambda : '+str(lambda_val))
     found_rewards = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
-    figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
+    # figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
 
-figure(np.arange(ROWS), np.arange(COLUMNS), reward, 'True Reward Distribution')
+# figure(np.arange(ROWS), np.arange(COLUMNS), reward, 'True Reward Distribution')
 # plt.plot(reward.flatten(), '--', label='True Reward')
 # plt.legend()
