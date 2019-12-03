@@ -155,7 +155,8 @@ for lambda_val in np.linspace(3.4, 3.46, num=20):
     R = LpVariable.dicts('R', RANGE)
 
     # U is introduced to handle the summation of mod R
-    # TODO : introduce additional documentation here in case this works
+    # For handling mod variables |R|, the model can be reformulated by introducing a new variable, U.
+    # Replacing R in the original objective function with U, and adding two extra constraints R <= U and -R <= U
     U = LpVariable.dicts('U', RANGE)
 
     for i in R.keys():
@@ -175,6 +176,8 @@ for lambda_val in np.linspace(3.4, 3.46, num=20):
         prob += el[0] >= 0, "Vector >= 0"+str(el)
 
     for i in U.keys():
+        # For handling mod variables |R|, the model can be reformulated by introducing a new variable, U.
+        # Replacing R in the original objective function with U, and adding two extra constraints R <= U and -R <= U
         prob += U[i] >= R[i], "1st constraint for mod "+str(U[i])
         prob += U[i] >= -R[i], "2nd constraint for mod "+str(U[i])
 
