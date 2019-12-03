@@ -5,8 +5,8 @@ import numpy as np
 
 # In[]:
 
-ROWS = 2
-COLUMNS = 2
+ROWS = 5
+COLUMNS = 5
 ACTIONS = 4
 # form the T matrix
 
@@ -59,7 +59,7 @@ reward[-1, -1] = +1
 reward[-2, -1] = -3
 Q = np.random.random((ROWS,COLUMNS,ACTIONS))
 Q_new = Q.copy()
-gamma = 0.9
+gamma = 0.99
 epsilon = 0.1
 difference = 100
 iterations = 0
@@ -68,7 +68,7 @@ for el in range(ROWS*COLUMNS):
     utility.update({el:list()})
 max_abs_diff = list()
 min_abs_diff = list()
-while difference > 0.0005:
+while difference > 0.005:
     count = 0
 # while iterations <= 10:
     iterations += 1
@@ -138,18 +138,18 @@ Ta_to_be_used = np.array([T_s_a_sbar[s, next_highest_values.flatten()[s]] for s 
 P_a = Ta_to_be_used
 
 # Set the reward limit
-Rmax = 3
+Rmax = np.max(np.abs(reward))
 
 # In[]:
 from pulp import *
 import matplotlib.pyplot as plt
 import matplotlib
-# matplotlib.use('Qt5Agg')
+matplotlib.use('Qt5Agg')
 from plot3d import figure
 # We are now ready to formulate this as a LinearProgram
-# TODO : for lambda_val in np.linspace(0,1.5,num=10): Do an exhaustive search for the critical lambda
-for lambda_val in np.linspace(0,2,num=100):
-# for lambda_val in [0, 0.1, 0.4, 0.8, 1.2]:
+
+# TODO : Perform binary search to look for lambda where phase transition happens
+for lambda_val in np.linspace(3.4, 3.46, num=20):
     prob = LpProblem('IRL_Reward', LpMaximize)
     RANGE = range(ROWS*COLUMNS)
     R = LpVariable.dicts('R', RANGE)
@@ -162,14 +162,13 @@ for lambda_val in np.linspace(0,2,num=100):
         R[i].lowBound = -Rmax
         R[i].upBound = Rmax
 
-    # TODO : vary gamma and see if there's any better result
+    # Setting gamma to a high value gives good results
     complicated = np.linalg.inv(np.identity(P_a1.shape[0]) - gamma*P_a1)
 
-    # TODO : the objective function is different from the one calculated analytically, find out why
+    # TODO : check if this is the same or not
     # We dont need min in the objective function because we have already found the next best action for each
     prob += lpSum(np.dot(np.dot(P_a1 - P_a, complicated), np.array([R[el1] for el1 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1)))\
-                  - lambda_val*(U[0] + U[1] + U[2] + U[3])
-    # TODO : Replace the U[0], [1], ... with a loop and lpSum
+                  - lpSum([lambda_val*U[el] for el in range(ROWS*COLUMNS)])
 
     expression2 = np.dot(P_a1 - P_a, np.dot(complicated, np.array([R[el3] for el3 in range(ROWS*COLUMNS)]).reshape(ROWS*COLUMNS, -1))) # "greater than or equal to 0 constraint"
     for el in expression2:
@@ -181,20 +180,29 @@ for lambda_val in np.linspace(0,2,num=100):
 
     prob.solve()
     print('Lambda : ', lambda_val, [value(R[el]) for el in range(ROWS*COLUMNS)])
-    print('Value of the objective function : ', value(prob.objective))
+
+
     found_rs = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
 
     # TODO : Check if this formula is correct or not
-    print('Value calculated analytically : ', np.sum(np.dot(P_a1 - P_a, np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1))), axis=0)
-                    - lambda_val*np.sum(np.abs(found_rs)))
+    analytical_calculation = (np.sum(np.dot(P_a1 - P_a, np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1))), axis=0)
+                             - lambda_val*np.sum(np.abs(found_rs)))[0]
 
-    # TODO : Check why the expected and the ones calculated are different
-    print('Expected coefficients are : R {} U {}'.format(np.sum(np.dot(P_a1-P_a, complicated), axis=0), -lambda_val))
-    print('Actual coefficients are   : {}'.format(prob.objective))
-    # plt.plot([value(R[el]) for el in range(ROWS*COLUMNS)], label='lambda : '+str(lambda_val))
+    # TODO : Check if they are the same
+    # print('Value of the objective function : ', value(prob.objective))
+    # print('Value calculated analytically : ', analytical_calculation)
+
+    if float('%.3f'%analytical_calculation) != float('%.3f'%value(prob.objective)):
+        print('Analytical Calculation : ', float('%.3f'%analytical_calculation))
+        print('Objective Calculation  : ', float('%.3f'%value(prob.objective)))
+
+    # TODO : Check if they are the same
+    # print('Expected coefficients are : R {} U {}'.format(np.sum(np.dot(P_a1-P_a, complicated), axis=0), -lambda_val))
+    # print('Actual coefficients are   : {}'.format(prob.objective))
+
     found_rewards = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
-    # figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
+    figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
 
-# figure(np.arange(ROWS), np.arange(COLUMNS), reward, 'True Reward Distribution')
+figure(np.arange(ROWS), np.arange(COLUMNS), reward, 'True Reward Distribution')
 # plt.plot(reward.flatten(), '--', label='True Reward')
 # plt.legend()
