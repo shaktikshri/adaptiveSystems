@@ -60,3 +60,41 @@ class DQNPolicy:
         expanded_targets[list(range(len(cur_states))), actions] = targets
 
         self.q_model.fit(cur_states, expanded_targets, epochs=1, verbose=False)
+
+
+class ReplayBuffer:
+    def __init__(self, max_size=2000):
+        self.max_size = max_size
+
+        self.cur_states = []
+        self.actions = []
+        self.next_states = []
+        self.rewards = []
+        self.dones = []
+
+    def __len__(self):
+        return len(self.cur_states)
+
+    def add(self, cur_state, action, next_state, reward, done):
+        self.cur_states.append(cur_state)
+        self.actions.append(action)
+        self.next_states.append(next_state)
+        self.rewards.append(reward)
+        self.dones.append(done)
+
+    def sample(self, sample_size=32):
+        sample_transitions = {}
+        if self.__len__() >= sample_size:
+            indices = np.random.choice(self.__len__(), size=sample_size)
+            sample_transitions['cur_states'] = np.array(self.cur_states)[indices]
+            sample_transitions['actions'] = np.array(self.actions)[indices]
+            sample_transitions['next_states'] = np.array(self.next_states)[indices]
+            sample_transitions['rewards'] = np.array(self.rewards)[indices]
+            sample_transitions['dones'] = np.array(self.dones)[indices]
+        else:
+            sample_transitions['cur_states'] = np.array(self.cur_states)
+            sample_transitions['actions'] = np.array(self.actions)
+            sample_transitions['next_states'] = np.array(self.next_states)
+            sample_transitions['rewards'] = np.array(self.rewards)
+            sample_transitions['dones'] = np.array(self.dones)
+        return sample_transitions
