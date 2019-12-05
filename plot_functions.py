@@ -7,6 +7,22 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 import numpy as np
 
 
+def plot_timesteps_and_rewards(avg_history):
+    fig, axes = plt.subplots(nrows=1, ncols=2)
+    fig.set_figheight(5)
+    fig.set_figwidth(10)
+    plt.subplots_adjust(wspace=0.5)
+    axes[0].plot(avg_history['episodes'], avg_history['timesteps'])
+    axes[0].set_title('Timesteps in episode')
+    axes[0].set_xlabel('Episode')
+    axes[0].set_ylabel('Timesteps')
+    axes[1].plot(avg_history['episodes'], avg_history['reward'])
+    axes[1].set_title('Reward')
+    axes[1].set_xlabel('Episode')
+    axes[1].set_ylabel('Reward')
+    plt.show()
+
+
 def figure(X=None, Y=None, Z=None, title=None):
     fig = plt.figure()
     ax = fig.gca(projection='3d')

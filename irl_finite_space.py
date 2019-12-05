@@ -145,7 +145,7 @@ from pulp import *
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Qt5Agg')
-from plot3d import figure
+from plot_functions import figure
 # We are now ready to formulate this as a LinearProgram
 
 # TODO : Perform binary search to look for lambda where phase transition happens
