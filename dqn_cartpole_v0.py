@@ -1,8 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
-
-from IPython.display import clear_output, HTML
 from tqdm.autonotebook import tqdm
 import gym
 
@@ -86,9 +83,11 @@ class DQNPolicy:
         # target = R(st-1, at-1) + gamma * max(a') Q(st, a')
         targets = rewards + np.multiply(1 - dones, self.gamma * (np.max(self.q_model.predict(next_states), axis=1)))
 
-        # V(st-1, at-1)
+        # expanded_targets are the Q values of all the actions for the current_states sampled
+        # from the previous experience
         expanded_targets = self.q_model.predict(cur_states)
 
+        # Prediction to be updated with the prediction+ground truth
         expanded_targets[list(range(len(cur_states))), actions] = targets
 
         self.q_model.fit(cur_states, expanded_targets, epochs=1, verbose=False)
@@ -150,9 +149,9 @@ replay_buffer = ReplayBuffer()
 cp_start_episode = 0
 
 # Play with a random policy and see
-cp_run_current_policy(cp_env.env, cp_policy)
+# cp_run_current_policy(cp_env.env, cp_policy)
 
-cp_train_episodes = 120
+cp_train_episodes = 200
 pbar_cp = tqdm(total=cp_train_episodes)
 
 # In[]:
@@ -198,7 +197,7 @@ for episode_i in range(cp_start_episode, cp_start_episode + cp_train_episodes):
         avg_reward = 0.0
 
     pbar_cp.update()
-
 cp_start_episode = cp_start_episode + cp_train_episodes
 plot_timesteps_and_rewards(cp_avg_history)
 cp_run_current_policy(cp_env, cp_policy)
+cp_env.close()
