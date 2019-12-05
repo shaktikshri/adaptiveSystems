@@ -187,21 +187,15 @@ for lambda_val in np.linspace(3.4, 3.46, num=20):
 
     found_rs = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
 
-    # TODO : Check if this formula is correct or not
     analytical_calculation = (np.sum(np.dot(P_a1 - P_a, np.dot(complicated, found_rs.reshape(ROWS*COLUMNS,1))), axis=0)
                              - lambda_val*np.sum(np.abs(found_rs)))[0]
 
-    # TODO : Check if they are the same
     # print('Value of the objective function : ', value(prob.objective))
     # print('Value calculated analytically : ', analytical_calculation)
 
     if float('%.3f'%analytical_calculation) != float('%.3f'%value(prob.objective)):
         print('Analytical Calculation : ', float('%.3f'%analytical_calculation))
         print('Objective Calculation  : ', float('%.3f'%value(prob.objective)))
-
-    # TODO : Check if they are the same
-    # print('Expected coefficients are : R {} U {}'.format(np.sum(np.dot(P_a1-P_a, complicated), axis=0), -lambda_val))
-    # print('Actual coefficients are   : {}'.format(prob.objective))
 
     found_rewards = np.array([value(R[el]) for el in range(ROWS*COLUMNS)]).reshape(ROWS, COLUMNS)
     figure(np.arange(ROWS), np.arange(COLUMNS), found_rewards, 'lambda : '+str(lambda_val))
