@@ -69,6 +69,7 @@ for episode_i in range(cp_start_episode, cp_start_episode + cp_train_episodes):
         replay_buffer.add(cur_state, action, next_state, reward, done)
 
         # sample minibatch of transitions from the replay buffer
+        # the sampling is done every timestep and not every episode
         sample_transitions = replay_buffer.sample()
 
         # update the policy using the sampled transitions
