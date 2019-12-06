@@ -47,18 +47,19 @@ class RandomVariable():
         return np.random.choice(self.noise_levels)
 
     def step(self, action):
-        self.y += action
-        reward = self.get_reward()
+        current_reward = self.get_reward(action)
         self.x = ( self.x + self.x_increment ) % self.x_range
         self.last_noise = self.select_noise()
-        return np.array([self.x, self.f() + self.last_noise]), reward
+        self.y = self.f() + self.last_noise
+        return np.array([self.x, self.y]), current_reward
 
     def f(self):
         return np.sin(self.x)
 
-    def get_reward(self):
+    def get_reward(self, action):
         # if the noise cancellation is within self.errepsilon then reward something
-        if np.abs(self.f() + self.last_noise - self.y) < self.errepsilon:
+        # check is -> noisy + corrective action == actual value?
+        if np.abs((self.y + self.action_space.actions[action]) - self.f()) < self.errepsilon:
             # TODO : Change the reward values and check
             return +10
         else:
@@ -144,6 +145,7 @@ for episode in range(1, total_train_episodes):
     epsilon = max(epsilon, epsilon_min)
     for iterations in range(max_iterations):
         action = env_policy.select_action(cur_state.reshape(1, -1), epsilon)
+
         next_state, reward = env.step(action)
 
         if reward == -1:
