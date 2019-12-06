@@ -68,7 +68,7 @@ class RandomVariable():
 # In[]:
 
 from dqn import DQNPolicy, ReplayBuffer
-max_iterations = 100
+max_iterations = 1000
 
 
 def run_current_policy(policy, env, cur_state, epsilon):
@@ -83,13 +83,13 @@ def run_current_policy(policy, env, cur_state, epsilon):
         timesteps += 1
         cur_state = next_state
     print('{} timesteps taken and collected {} reward'.format(timesteps, total_reward))
-    return total_reward, timesteps, function_history
+    return total_reward, timesteps, np.array(function_history)
 
 # In[]:
 
 noise = [ -0.07777778, 0.07777778]
 
-env = RandomVariable(0.001, noise)
+env = RandomVariable(0.001, noise, x_range=10)
 
 # TODO : Can change these parameters
 lr = 0.001
@@ -152,7 +152,8 @@ for episode in range(total_train_episodes):
 # In[]:
 
 # Now play again
-run_current_policy(env_policy, env, env.reset(), epsilon)
+_, _, states = run_current_policy(env_policy, env, env.reset(), epsilon)
+plt.plot(states[:,0], states[:,1])
 
 # In[]:
 import matplotlib
