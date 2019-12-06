@@ -5,20 +5,20 @@ def f(x, noise):
     return np.sin(x) + noise
 
 # f = lambda x: np.sin(x)
-import matplotlib.pyplot as plt
-noise = np.random.choice([0.025, -0.025, 0.05, -0.05], size=x.shape[0])
-states = np.array([x, f(x, noise)])
-plt.plot(states[0], states[1], label='original', color='b')
+# import matplotlib.pyplot as plt
+# noise = np.random.choice([0.025, -0.025, 0.05, -0.05], size=x.shape[0])
+# states = np.array([x, f(x, noise)])
+# plt.plot(states[0], states[1], label='original', color='b')
 
 def step(states, actions):
     states[1] += actions
     return states
 
-actions = -noise
-states = step(states, actions)
-plt.plot(states[0], states[1], label='smoothened', color='g')
-plt.legend()
-plt.show()
+# actions = -noise
+# states = step(states, actions)
+# plt.plot(states[0], states[1], label='smoothened', color='g')
+# plt.legend()
+# plt.show()
 
 # In[]:
 
@@ -32,7 +32,7 @@ class RandomVariable():
         def sample(self):
             return np.random.choice(self.n)
 
-    def __init__(self, errepsilon,  noise_levels, x_increment=0.01, x_range=1):
+    def __init__(self, errepsilon,  noise_levels, x_increment, x_range):
         self.y = 0
         self.x = 0
         self.x_increment = x_increment
@@ -40,7 +40,7 @@ class RandomVariable():
         self.noise_levels = noise_levels
         # TODO : Change these values and check
         self.errepsilon = errepsilon
-        self.observation_space = np.array([2])
+        self.observation_space = np.array([2,2])
         self.action_space = self.ActionSpace()
 
     def step(self, action):
@@ -68,10 +68,9 @@ class RandomVariable():
 # In[]:
 
 from dqn import DQNPolicy, ReplayBuffer
-max_iterations = 1000
 
 
-def run_current_policy(policy, env, cur_state, epsilon):
+def run_current_policy(policy, env, cur_state, epsilon, max_iterations):
     total_reward = 0
     function_history = list()
     timesteps = 0
@@ -89,7 +88,6 @@ def run_current_policy(policy, env, cur_state, epsilon):
 
 noise = [ -0.07777778, 0.07777778]
 
-env = RandomVariable(0.001, noise, x_range=10)
 
 # TODO : Can change these parameters
 lr = 0.001
@@ -98,20 +96,38 @@ epsilon = 1
 epsilon_decay = 0.05
 epsilon_min = 0.01
 gamma = 0.99
-hidden_dim = 24
+hidden_dim = 50
 mod_episode = 10
+max_iterations = 500
+x_range = 10
+x_increment = 0.01
+max_x = x_increment * max_iterations
 
+env = RandomVariable(0.001, noise, x_increment, x_range)
 env_policy = DQNPolicy(env, lr, gamma, hidden_dim)
 replay_buffer = ReplayBuffer()
 total_train_episodes = 500
 
 # play with a random policy
-# run_current_policy(env_policy, env, env.reset())
+# run_current_policy(env_policy, env, env.reset(), max_iterations)
 
 # In[]:
 history = dict({'reward':list(), 'timesteps':list(), 'episodes':list()})
 
-for episode in range(total_train_episodes):
+import matplotlib.pyplot as plt
+
+plt.ion()
+
+fig, ax = plt.subplots()
+noise_pl = np.random.choice([0.025, -0.025, 0.05, -0.05], size=x.shape[0])
+states_pl = np.array([x, f(x, noise_pl)])
+sc = ax.scatter(states_pl[0], states_pl[1])
+plt.xlim(0, max_x)
+plt.ylim(-1, 1)
+plt.draw()
+
+
+for episode in range(1, total_train_episodes):
     done = False
     # print('Epoch :', episode + 1)
     ep_reward = 0
@@ -138,25 +154,28 @@ for episode in range(total_train_episodes):
     history['episodes'].append(episode+1)
     if episode % mod_episode == 0:
         # Get last 100 points from replay buffer
-        states = replay_buffer.cur_states[:-100]
+        states = np.array(replay_buffer.cur_states[:-100])
         print('Epoch : {} Avg Reward : {} Timesteps : {}'.format(
             episode, history['reward'][-1], history['timesteps'][-1]))
         # plt.figure()
-        plt.scatter(states[0], states[1], label='Episode : '+str(episode))
-        plt.legend()
-        plt.show()
+        sc.set_offsets(np.c_[states[:, 0], states[:, 1]])
+        fig.canvas.draw_idle()
+        plt.pause(0.1)
 
     # decay the epsilon after every episode
     epsilon -= epsilon_decay
 
+plt.ioff()
+plt.show()
+
 # In[]:
 
 # Now play again
-_, _, states = run_current_policy(env_policy, env, env.reset(), epsilon)
-plt.plot(states[:,0], states[:,1])
+_, _, states = run_current_policy(env_policy, env, env.reset(), epsilon, max_iterations)
+plt.scatter(states[:, 0], states[:, 1])
 
 # In[]:
-import matplotlib
-matplotlib.use('Qt5Agg')
+# import matplotlib
+# matplotlib.use('Qt5Agg')
 from plot_functions import plot_timesteps_and_rewards
 plot_timesteps_and_rewards(history)
