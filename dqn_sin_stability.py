@@ -25,14 +25,14 @@ def step(states, actions):
 
 class RandomVariable():
     class ActionSpace():
-        def __init__(self):
-            self.actions = np.linspace(-0.1, +0.1, 10)
+        def __init__(self, action_space):
+            self.actions = action_space
             self.n = self.actions.shape[0]
 
         def sample(self):
             return np.random.choice(self.n)
 
-    def __init__(self, errepsilon,  noise_levels, x_increment, x_range):
+    def __init__(self, errepsilon,  noise_levels, x_increment, x_range, action_space):
         self.y = 0
         self.x = 0
         self.x_increment = x_increment
@@ -41,19 +41,24 @@ class RandomVariable():
         # TODO : Change these values and check
         self.errepsilon = errepsilon
         self.observation_space = np.array([2,2])
-        self.action_space = self.ActionSpace()
+        self.action_space = self.ActionSpace(action_space)
+
+    def select_noise(self):
+        return np.random.choice(self.noise_levels)
 
     def step(self, action):
         self.y += action
         reward = self.get_reward()
         self.x = ( self.x + self.x_increment ) % self.x_range
-        return np.array([self.x, self.f()]), reward
+        self.last_noise = self.select_noise()
+        return np.array([self.x, self.f() + self.last_noise]), reward
 
     def f(self):
-        return np.sin(self.x) + np.random.choice(self.noise_levels)
+        return np.sin(self.x)
 
     def get_reward(self):
-        if np.abs(self.f() - self.y) < self.errepsilon:
+        # if the noise cancellation is within self.errepsilon then reward something
+        if np.abs(self.f() + self.last_noise - self.y) < self.errepsilon:
             # TODO : Change the reward values and check
             return +10
         else:
@@ -61,7 +66,8 @@ class RandomVariable():
 
     def reset(self):
         self.x = 0
-        self.y = self.f()
+        self.last_noise = self.select_noise()
+        self.y = self.f() + self.last_noise
         return np.array([self.x, self.y])
 
 
@@ -86,27 +92,29 @@ def run_current_policy(policy, env, cur_state, epsilon, max_iterations):
 
 # In[]:
 
-noise = [ -0.07777778, 0.07777778]
+noise = [0.05]
 
 
 # TODO : Can change these parameters
 lr = 0.001
 # TODO : Need to do the epsilon decay
-epsilon = 1
-epsilon_decay = 0.05
+epsilon = 0.1
+# epsilon_decay = 0.05
 epsilon_min = 0.01
 gamma = 0.99
-hidden_dim = 50
+hidden_dim = 24
 mod_episode = 10
-max_iterations = 500
+max_iterations = 250
 x_range = 10
 x_increment = 0.01
 max_x = x_increment * max_iterations
+action_space = np.array([-0.05])
+# action_space = np.linspace(0, 1, 3) # 3 unique actions out of which one would be the noise
 
-env = RandomVariable(0.001, noise, x_increment, x_range)
+env = RandomVariable(0.001, noise, x_increment, x_range, action_space)
 env_policy = DQNPolicy(env, lr, gamma, hidden_dim)
 replay_buffer = ReplayBuffer()
-total_train_episodes = 500
+total_train_episodes = 50
 
 # play with a random policy
 # run_current_policy(env_policy, env, env.reset(), max_iterations)
@@ -123,7 +131,7 @@ noise_pl = np.random.choice([0.025, -0.025, 0.05, -0.05], size=x.shape[0])
 states_pl = np.array([x, f(x, noise_pl)])
 sc = ax.scatter(states_pl[0], states_pl[1])
 plt.xlim(0, max_x)
-plt.ylim(-1, 1)
+plt.ylim(-1.75, 1.75)
 plt.draw()
 
 
@@ -138,6 +146,8 @@ for episode in range(1, total_train_episodes):
         action = env_policy.select_action(cur_state.reshape(1, -1), epsilon)
         next_state, reward = env.step(action)
 
+        if reward == -1:
+            print('wow')
         replay_buffer.add(cur_state, action, next_state, reward, done)
 
         # TODO : Change the sample size and check any improvements
@@ -162,8 +172,9 @@ for episode in range(1, total_train_episodes):
         fig.canvas.draw_idle()
         plt.pause(0.1)
 
+    # TODO : Note the removed the epsilon decay
     # decay the epsilon after every episode
-    epsilon -= epsilon_decay
+    # epsilon -= epsilon_decay
 
 plt.ioff()
 plt.show()
