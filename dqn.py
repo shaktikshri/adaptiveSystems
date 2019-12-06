@@ -5,13 +5,12 @@ import numpy as np
 
 # Define the policy and replay buffer
 class DQNPolicy:
-    def __init__(self, env, lr, epsilon, gamma, hidden_dim=24):
+    def __init__(self, env, lr, gamma, hidden_dim=24):
         self.env = env
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.n
         self.lr = lr
         self.hidden_dim = hidden_dim
-        self.epsilon = epsilon
         self.gamma = gamma
 
         # build the Q network approximator
@@ -23,9 +22,9 @@ class DQNPolicy:
         self.q_model.add(Dense(self.action_dim, activation='linear'))
         self.q_model.compile(loss='mse', optimizer=Adam(lr=self.lr))
 
-    def select_action(self, cur_state):
+    def select_action(self, cur_state, epsilon):
         # epsilon greedy strategy
-        if np.random.uniform(low=0.0, high=1.0) > self.epsilon:
+        if np.random.uniform(low=0.0, high=1.0) > epsilon:
             # get Q(cur_state, a) for all action a
             predictions = self.q_model.predict(cur_state)[0]
 
@@ -41,10 +40,11 @@ class DQNPolicy:
         targets = rewards + np.multiply(1 - dones, self.gamma * (np.max(self.q_model.predict(next_states), axis=1)))
 
         # expanded_targets are the Q values of all the actions for the current_states sampled
-        # from the previous experience
+        # from the previous experience. These are the predictions
         expanded_targets = self.q_model.predict(cur_states)
 
         # Prediction to be updated with the prediction+ground truth
+        # We need to update the predictions to the values we want, which are the targets and then fit the model
         expanded_targets[list(range(len(cur_states))), actions] = targets
 
         self.q_model.fit(cur_states, expanded_targets, epochs=1, verbose=False)
