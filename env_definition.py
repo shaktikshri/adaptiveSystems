@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class RandomVariable:
     def __init__(self):
         self.mean = 0

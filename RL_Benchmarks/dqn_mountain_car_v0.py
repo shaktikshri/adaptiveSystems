@@ -70,6 +70,7 @@ for episode in range(total_train_episodes):
 
         # TODO : Change the sample size and check any improvements
         sampled_transitions = replay_buffer.sample()
+        # the q updation occurs for all transitions in all episodes, just like TD updates
         env_policy.update_policy(**sampled_transitions)
         ep_reward += reward
         ep_timesteps += 1
