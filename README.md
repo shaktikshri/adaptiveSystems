@@ -20,8 +20,6 @@ A reward structure promoting the stability is defined. The Utility values are le
 
     &pi;(s) = argmax<sub>a</sub> Q(s,a)
 
-If you would like to know more about this research feel free to drop me an email.
-
 ```dqn.py```
 
 This file gives a template for constructing a Deep Q Learning network. You can specify the no. of hidden units you want but for the moment it takes only one hidden layer.
@@ -33,3 +31,7 @@ This file implements the Finite Space IRL as put forth in Andrew Ng and Stuart R
 ```dqn_sin_stability.py```
 
 This is the most recent code I am stuck on (among many other codes). This should ideally be a DQN implementation of stabilizing a sin function, or a general function. For any given continuous values of a noisy sin output, the agent should choose a noise correction scheme which smoothly approximates the sin function, or the function in consideration. Both the noise and the correction values can be continuous real values which makes this problem non trivial.
+
+
+
+If you would like to know more about this research feel free to drop me an email.
