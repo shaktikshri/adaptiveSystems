@@ -2,8 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from torch.autograd import Variable
 
 
@@ -28,30 +26,31 @@ class CACLA(nn.Module):
 
 
 # In[89]:
-network = CACLA(input_size=1, output_size=1)
+def main():
+    network = CACLA(input_size=1, output_size=1)
 
-# TODO : Need to make this part of the scheduler, when you are using
-learning_rate = 0.001
-criterion = nn.MSELoss()
+    # TODO : Need to make this part of the scheduler, when you are using
+    learning_rate = 0.001
+    criterion = nn.MSELoss()
 
-# TODO : Check if you should use SGD here for the cacla
-optimizer = optim.Adam(network.parameters(), lr=learning_rate)
-X = np.arange(-1, 1, 0.001).reshape(-1, 1)
-X = Variable(torch.from_numpy(X))
-y = np.power(X, 2)
-# y = torch.from_numpy(y)
+    # TODO : Check if you should use SGD here for the cacla
+    optimizer = optim.Adam(network.parameters(), lr=learning_rate)
+    X = np.arange(-1, 1, 0.001).reshape(-1, 1)
+    X = Variable(torch.from_numpy(X))
+    y = np.power(X, 2)
+    # y = torch.from_numpy(y)
 
-for epoch in range(10000):
-    outputs = network(X.float())
-    loss = criterion(outputs, y.float())
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-    if epoch % 1000 == 0:
-        print('Epoch : {}, Loss: {}'.format(epoch, loss.item()))
+    for epoch in range(10000):
+        outputs = network(X.float())
+        loss = criterion(outputs, y.float())
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if epoch % 1000 == 0:
+            print('Epoch : {}, Loss: {}'.format(epoch, loss.item()))
 
-X_test = np.arange(-1,1,0.001).reshape(-1, 1)
-y_test = np.power(X_test, 2)
-y_pred = network(Variable(torch.from_numpy(X_test)).float()).data.numpy()
-import matplotlib.pyplot as plt
-plt.plot(X_test, y_pred)
+    X_test = np.arange(-1,1,0.001).reshape(-1, 1)
+    y_test = np.power(X_test, 2)
+    y_pred = network(Variable(torch.from_numpy(X_test)).float()).data.numpy()
+    import matplotlib.pyplot as plt
+    plt.plot(X_test, y_pred)
