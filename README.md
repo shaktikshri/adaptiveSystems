@@ -32,6 +32,14 @@ This file implements the Finite Space IRL as put forth in Andrew Ng and Stuart R
 
 This is the most recent code I am stuck on (among many other codes :P ). This should ideally be a DQN implementation of stabilizing a sin function, or a general function. For any given continuous values of a noisy sin output, the agent should choose a noise correction scheme which smoothly approximates the sin function, or the function in consideration. Both the noise and the correction values can be continuous real values which makes this problem non trivial.
 
+```cacla.py```
+
+Lately i realized that the function stabilization problem I was trying to handle couldnt be done without a continuos
+action space consideration. I therefore tried my hands on some continuous action space RL algorithms, which as you'd
+expect is just a slight variation of the DQN form. The file ```cacla.py``` is an implementation of the Continuous Actor
+Critic Learning Algorithm (CACLA) proposed by Hasselt and Wiering in [Reinforcement Learning in Continuous Action Spaces](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf).
+
+PS. I am working on this file right now so it can appear a bit messed up, please excuse me for it :)
 
 
-If you would like to know more about this research feel free to drop me an email.
+As always, if you'd like to know more about this research feel free to drop me an email.
