@@ -13,10 +13,29 @@ from plot_functions import plot_timesteps_and_rewards
 #  2. Fixing target
 #  3. Learning rate decay with a scheduler
 
+class Critic(nn.Module):
+    def __init__(self, input_size, output_size=1, hidden_size=12):
+        super(Critic, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU()
+        )
+        self.layer2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        )
+        self.output_layer = nn.Linear(hidden_size, output_size)
 
-class FunctionApproximation(nn.Module):
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.output_layer(out)
+        return out
+
+
+class Actor(nn.Module):
     def __init__(self, input_size, output_size, hidden_size=12):
-        super(FunctionApproximation, self).__init__()
+        super(Actor, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU()
@@ -50,41 +69,21 @@ class FunctionApproximation(nn.Module):
         return action, m.log_prob(action)
 
 
-class Q_Approximation(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=12):
-        super(Q_Approximation, self).__init__()
-        self.layer1 = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU()
-        )
-        self.layer2 = nn.Sequential(
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU()
-        )
-        self.output_layer = nn.Sequential(
-            nn.Linear(hidden_size, output_size),
-            # TODO : Try out log here if any numerical instability occurs
-            nn.Softmax(dim=-1)
-        )
+learning_rate = 0.001
+train_episodes = 3000
 
-    def forward(self, x):
-        out = self.layer1(x)
-        out = self.layer2(out)
-        out = self.output_layer(out)
-        return out
-
-
-learning_rate = 0.01
 env = gym.make('CartPole-v1')
-actor = FunctionApproximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
-critic = Q_Approximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
+actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
+
+# Approximating the Value function
+critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
+
 actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
 critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
 gamma = 0.95
-epsilon = 0.05
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
-agg_interval = 1
+agg_interval = 100
 avg_reward = 0.0
 avg_timestep = 0
 running_loss1_mean = 0
@@ -93,17 +92,14 @@ loss1_history = []
 loss2_history = []
 # initialize policy and replay buffer
 replay_buffer = ReplayBuffer()
-start_episode = 0
 
-# Play with a random policy and see
-# run_current_policy(env.env, policy)
 
-train_episodes = 200
+
 
 # In[]:
 
 # Train the network to predict actions for each of the states
-for episode_i in range(start_episode, start_episode + train_episodes):
+for episode_i in range(train_episodes):
     episode_timestep = 0
     episode_reward = 0.0
 
@@ -120,10 +116,10 @@ for episode_i in range(start_episode, start_episode + train_episodes):
 
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
-        q_values = critic(cur_state)
-        target = reward + gamma * q_values
+        u_value = critic(cur_state)
+        target = reward + gamma * u_value
         critic_optimizer.zero_grad()
-        loss1 = mse_loss(input=q_values, target=target)
+        loss1 = mse_loss(input=u_value, target=target)
         loss1.backward(retain_graph=True)
         running_loss1_mean += loss1.item()
         critic_optimizer.step()
@@ -133,9 +129,8 @@ for episode_i in range(start_episode, start_episode + train_episodes):
         # compute the gradient from the sampled log probability
         # TODO : Verify the computation here
         #  the log probability times the Q of the action that you just took in that state
-        loss2 = -log_prob * q_values[action]
+        loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
         loss2.backward()
-        print('Actor Loss : ', loss2.item())
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
 
@@ -168,17 +163,18 @@ for episode_i in range(start_episode, start_episode + train_episodes):
         avg_history['reward'].append(avg_reward / float(agg_interval))
         avg_timestep = 0
         avg_reward = 0.0
+        print('Episode : ', episode_i+1, 'Loss : ', loss2_history[-1])
 
 # In[]:
-
+import matplotlib
+matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-plt.figure(0)
+plt.figure('Critic Loss')
 plt.plot(loss1_history)
-plt.figure(1)
+plt.figure('Actor Loss')
 plt.plot(loss2_history)
 
 plot_timesteps_and_rewards(avg_history)
-
 
 cur_state = env.reset()
 total_step = 0
@@ -192,3 +188,4 @@ while not done:
     total_step += 1
     cur_state = next_state
 print("Total timesteps = {}, total reward = {}".format(total_step, total_reward))
+env.close()
