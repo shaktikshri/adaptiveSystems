@@ -51,10 +51,34 @@ class FunctionApproximation(nn.Module):
         return action, m.log_prob(action)
 
 
+class Q_Approximation(nn.Module):
+    def __init__(self, input_size, output_size, hidden_size=12):
+        super(Q_Approximation, self).__init__()
+        self.layer1 = nn.Sequential(
+            nn.Linear(input_size, hidden_size),
+            nn.ReLU()
+        )
+        self.layer2 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        )
+        self.output_layer = nn.Sequential(
+            nn.Linear(hidden_size, output_size),
+            # TODO : Try out log here if any numerical instability occurs
+            nn.Softmax(dim=-1)
+        )
+
+    def forward(self, x):
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.output_layer(out)
+        return out
+
+
 learning_rate = 0.001
 env = gym.make('CartPole-v1')
 actor = FunctionApproximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
-critic = FunctionApproximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
+critic = Q_Approximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
 actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
 critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
@@ -90,23 +114,24 @@ for episode_i in range(start_episode, start_episode + train_episodes):
         action, log_prob = actor.select_action(cur_state)
 
         # take action in the environment
-        next_state, reward, done, info = env.step(action)
+        next_state, reward, done, info = env.step(action.item())
 
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
         q_values = critic(cur_state)
         target = reward + gamma * q_values
         critic_optimizer.zero_grad()
-        loss = mse_loss(input=q_values, target=target)
-        loss.backward()
+        loss1 = mse_loss(input=q_values, target=target)
+        loss1.backward(retain_graph=True)
         critic_optimizer.step()
 
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
-        # TODO : check the dimensions here
-        loss = -log_prob * q_values
-        loss.backward()
+        # TODO : Verify the computation here
+        #  the log probability times the Q of the action that you just took in that state
+        loss2 = -log_prob * q_values[action]
+        loss2.backward()
         actor_optimizer.step()
 
         # add the transition to replay buffer
@@ -134,5 +159,5 @@ for episode_i in range(start_episode, start_episode + train_episodes):
         avg_timestep = 0
         avg_reward = 0.0
 
-# plot_timesteps_and_rewards(avg_history)
+plot_timesteps_and_rewards(avg_history)
 env.close()
