@@ -6,6 +6,8 @@ from torch.autograd import Variable
 import gym
 from dqn import ReplayBuffer
 from torch.distributions import Categorical
+from torch.nn.functional import mse_loss
+
 
 # TODO : 
 #  1. Experience replay 
@@ -49,12 +51,13 @@ class FunctionApproximation(nn.Module):
         return action, m.log_prob(action)
 
 
+learning_rate = 0.001
 env = gym.make('CartPole-v1')
 actor = FunctionApproximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
 critic = FunctionApproximation(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
+actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
+critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
-
-alpha = 0.001
 gamma = 0.95
 epsilon = 0.05
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
@@ -89,9 +92,22 @@ for episode_i in range(start_episode, start_episode + train_episodes):
         # take action in the environment
         next_state, reward, done, info = env.step(action)
 
-        # compute the gradient from the sampled log probability
-        loss = -log_prob * reward
+        # Update parameters of critic by TD(0)
+        # TODO : Use TD Lambda here and compare the performance
+        q_values = critic(cur_state)
+        target = reward + gamma * q_values
+        critic_optimizer.zero_grad()
+        loss = mse_loss(input=q_values, target=target)
         loss.backward()
+        critic_optimizer.step()
+
+        # Update parameters of actor by policy gradient
+        actor_optimizer.zero_grad()
+        # compute the gradient from the sampled log probability
+        # TODO : check the dimensions here
+        loss = -log_prob * q_values
+        loss.backward()
+        actor_optimizer.step()
 
         # add the transition to replay buffer
         # replay_buffer.add(cur_state, action, next_state, reward, done)
