@@ -5,11 +5,10 @@ import gym
 from dqn import ReplayBuffer
 from torch.distributions import Categorical
 from torch.nn.functional import mse_loss
-from plot_functions import plot_timesteps_and_rewards
 
 
 # TODO : 
-#  1. Experience replay 
+#  1. Experience replay
 #  2. Fixing target
 #  3. Learning rate decay with a scheduler
 
@@ -166,15 +165,23 @@ for episode_i in range(train_episodes):
         print('Episode : ', episode_i+1, 'Loss : ', loss2_history[-1])
 
 # In[]:
-import matplotlib
-matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-plt.figure('Critic Loss')
-plt.plot(loss1_history)
-plt.figure('Actor Loss')
-plt.plot(loss2_history)
 
-plot_timesteps_and_rewards(avg_history)
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 7))
+plt.subplots_adjust(wspace=0.5)
+axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
+axes[0][0].set_title('Timesteps per episode')
+axes[0][0].set_ylabel('Timesteps')
+axes[0][1].plot(avg_history['episodes'], avg_history['reward'])
+axes[0][1].set_title('Reward per episode')
+axes[0][1].set_ylabel('Reward')
+axes[1][0].set_title('Critic Loss')
+axes[1][0].plot(loss1_history)
+axes[1][1].set_title('Actor Loss')
+axes[1][1].plot(loss2_history)
+
+plt.show()
+
 
 cur_state = env.reset()
 total_step = 0
