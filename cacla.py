@@ -5,6 +5,7 @@ import gym
 from dqn import ReplayBuffer
 from torch.distributions import Categorical
 from torch.nn.functional import mse_loss
+import numpy as np
 
 
 # TODO : 
@@ -106,6 +107,10 @@ for episode_i in range(train_episodes):
 
     cur_state = torch.Tensor(env.reset())
 
+
+    # TODO : this has to be removed
+    history = list()
+
     while not done:
         # TODO : Use gaussian exploration for this
         action, log_prob = actor.select_action(cur_state)
@@ -115,6 +120,7 @@ for episode_i in range(train_episodes):
 
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
+        """
         u_value = critic(cur_state)
         target = reward + gamma * u_value
         critic_optimizer.zero_grad()
@@ -122,7 +128,8 @@ for episode_i in range(train_episodes):
         loss1.backward(retain_graph=True)
         running_loss1_mean += loss1.item()
         critic_optimizer.step()
-
+        
+        
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
@@ -132,6 +139,7 @@ for episode_i in range(train_episodes):
         loss2.backward()
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
+        """
 
         # add the transition to replay buffer
         # replay_buffer.add(cur_state, action, next_state, reward, done)
@@ -146,7 +154,26 @@ for episode_i in range(train_episodes):
         episode_reward += reward
         episode_timestep += 1
 
+        history.append([cur_state, next_state, action, log_prob, reward])
+
         cur_state = torch.Tensor(next_state)
+
+
+    # TODO : This has to be removed
+    #  Now calculate the return
+    return_val = 0
+    for i in range(len(history)):
+        return_t = 0
+        el = 0
+        for j in range(i, len(history)):
+            return_t += np.exp(gamma, el)*history[j][-1]
+            el += 1
+        actor_optimizer.zero_grad()
+        loss2 = -history[i][3] * return_t # the advantage function used is the TD error
+        loss2.backward()
+        running_loss2_mean += loss2.item()
+        actor_optimizer.step()
+
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
