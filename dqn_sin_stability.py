@@ -61,7 +61,7 @@ class RandomVariable():
         # check is -> noisy + corrective action == actual value?
         if np.abs((self.y + self.action_space.actions[action]) - self.f()) < self.errepsilon:
             # TODO : Change the reward values and check
-            return +3
+            return +10
         else:
             return -1
 
@@ -93,7 +93,7 @@ def run_current_policy(policy, env, cur_state, epsilon, max_iterations):
 
 # In[]:
 
-noise = [0.025, -0.025, 0.05, -0.05]
+noise = [0.05]
 
 
 # TODO : Can change these parameters
@@ -109,13 +109,13 @@ max_iterations = 250
 x_range = 10
 x_increment = 0.01
 max_x = x_increment * max_iterations
-action_space = np.array([0.025, -0.025, 0.05, -0.05])
+action_space = np.array([-0.05])
 # action_space = np.linspace(0, 1, 3) # 3 unique actions out of which one would be the noise
 
 env = RandomVariable(0.001, noise, x_increment, x_range, action_space)
 env_policy = DQNPolicy(env, lr, gamma, hidden_dim)
 replay_buffer = ReplayBuffer()
-total_train_episodes = 500
+total_train_episodes = 50
 
 # play with a random policy
 # run_current_policy(env_policy, env, env.reset(), max_iterations)
@@ -131,8 +131,8 @@ fig, ax = plt.subplots()
 noise_pl = np.random.choice([0.025, -0.025, 0.05, -0.05], size=x.shape[0])
 states_pl = np.array([x, f(x, noise_pl)])
 sc = ax.scatter(states_pl[0], states_pl[1])
-plt.xlim(-1, max_x+1)
-plt.ylim(-2, 2)
+plt.xlim(0, max_x)
+plt.ylim(-1.75, 1.75)
 plt.draw()
 
 
@@ -148,6 +148,8 @@ for episode in range(1, total_train_episodes):
 
         next_state, reward = env.step(action)
 
+        if reward == -1:
+            print('wow')
         replay_buffer.add(cur_state, action, next_state, reward, done)
 
         # TODO : Change the sample size and check any improvements
