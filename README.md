@@ -32,14 +32,22 @@ This file implements the Finite Space IRL as put forth in Andrew Ng and Stuart R
 
 This is the most recent code I am stuck on (among many other codes :P ). This should ideally be a DQN implementation of stabilizing a sin function, or a general function. For any given continuous values of a noisy sin output, the agent should choose a noise correction scheme which smoothly approximates the sin function, or the function in consideration. Both the noise and the correction values can be continuous real values which makes this problem non trivial.
 
-```cacla.py```
+```acla_with_approxq.py```
 
 Lately i realized that the function stabilization problem I was trying to handle couldnt be done without a continuos
 action space consideration. I therefore tried my hands on some continuous action space RL algorithms, which as you'd
-expect is just a slight variation of the DQN form. The file ```cacla.py``` is an implementation of the Continuous Actor
+expect is just a slight variation of the DQN form. The file ```acla_with_approxq.py``` is an implementation of the Continuous Actor
 Critic Learning Algorithm (CACLA) proposed by Hasselt and Wiering in [Reinforcement Learning in Continuous Action Spaces](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf).
 
 PS. I am working on this file right now so it can appear a bit messed up, please excuse me for it :)
 
 
 As always, if you'd like to know more about this research feel free to drop me an email.
+
+```acla_with_mc_returns.py```
+
+This file performs an actor critic learning algorithm with monte carlo estimates of the returns.
+Several experiments were performed and were found consistent with stochastic behaviors of the gradients.
+The stochastic parameter updates were best with an SGD with learning rate scheduling and nesterov accelerated gradient.
+However, a full batch gradient descent beat the sgd by a large margin and converged within 500 episodes for cartpole v1.
+
