@@ -78,8 +78,13 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
-actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
-critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
+optimizer_algo = 'adam'
+if optimizer_algo == 'adam':
+    actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
+elif optimizer_algo == 'sgd':
+    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8)
+    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8)
 
 gamma = 0.95
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
@@ -162,23 +167,37 @@ for episode_i in range(train_episodes):
     # TODO : This has to be removed
     #  Now calculate the return
     #  Here we calculate the return and update the loss in one step after the torch.sum function
-    return_values = torch.Tensor()
-    log_probabilities = torch.Tensor()
-    for i in range(len(history)):
-        return_t = 0
-        el = 0
-        for j in range(i, len(history)):
-            return_t += np.power(gamma, el)*history[j][-1]
-            el += 1
-        return_values = torch.cat([return_values, torch.Tensor([return_t])])
-        log_probabilities = torch.cat([log_probabilities, history[i][3].reshape(-1)])
-    actor_optimizer.zero_grad()
-    # -1 is important!!
-    loss2 = torch.sum(torch.mul(-1*log_probabilities, return_values))
-    loss2.backward()
-    running_loss2_mean += loss2.item()
-    actor_optimizer.step()
+    if optimizer_algo == 'adam':
+        return_values = torch.Tensor()
+        log_probabilities = torch.Tensor()
+        for i in range(len(history)):
+            return_t = 0
+            el = 0
+            for j in range(i, len(history)):
+                return_t += np.power(gamma, el)*history[j][-1]
+                el += 1
+            return_values = torch.cat([return_values, torch.Tensor([return_t])])
+            log_probabilities = torch.cat([log_probabilities, history[i][3].reshape(-1)])
+        actor_optimizer.zero_grad()
+        # -1 is important!!
+        loss2 = torch.sum(torch.mul(-1*log_probabilities, return_values))
+        loss2.backward()
+        running_loss2_mean += loss2.item()
+        actor_optimizer.step()
 
+    elif optimizer_algo == 'sgd':
+        for i in range(len(history)):
+            return_t = 0
+            el = 0
+            for j in range(i, len(history)):
+                return_t += np.power(gamma, el)*history[j][-1]
+                el += 1
+            actor_optimizer.zero_grad()
+            # -1 is important!!
+            loss2 = torch.sum(torch.mul(-1*history[i][3].reshape(-1), torch.Tensor([return_t])))
+            loss2.backward()
+            running_loss2_mean += loss2.item()
+            actor_optimizer.step()
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
