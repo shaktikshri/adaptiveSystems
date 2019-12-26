@@ -21,25 +21,11 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
 optimizer_algo = 'sgd'
-decaying_algo = 'step'
+actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
 
-if optimizer_algo == 'adam':
-    actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
-    critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
-elif optimizer_algo == 'sgd':
-    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
-    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
-
-    if decaying_algo == 'step':
-        # gamma = decaying factor
-        scheduler = StepLR(actor_optimizer, step_size=1000, gamma=0.1)
-
-    # We cant use plateau decay here since the gradient is very noisy for stochastic estimates,
-    # nothing plateaus at all !
-    # elif decaying_algo == 'plateau':
-    #     # patience: number of epochs - 1 where loss plateaus before decreasing LR
-    #     # patience = 0, after 1 bad epoch, reduce LR. New lr = lr * factor
-    #     scheduler = ReduceLROnPlateau(actor_optimizer, mode='max', factor=0.1, patience=0, verbose=True)
+# gamma = decaying factor
+scheduler = StepLR(actor_optimizer, step_size=1000, gamma=0.1)
 
 gamma = 0.99
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
@@ -53,6 +39,20 @@ loss2_history = []
 # initialize policy and replay buffer
 replay_buffer = ReplayBuffer()
 
+# In[]:
+
+def update_critic(critic, critic_optimizer, cur_states, actions, next_states, rewards, dones):
+    # target doesnt change when its terminal, thus multiply with (1-done)
+    # target = R(st-1, at-1) + gamma * max(a') Q(st, a')
+    targets = rewards + np.multiply(1 - dones, critic.gamma * (critic(next_states)))
+    # expanded_targets are the Q values of all the actions for the current_states sampled
+    # from the previous experience. These are the predictions
+    expanded_targets = critic(cur_states)
+    loss1 = mse_loss(input=expanded_targets, target=targets)
+    loss1.backward()
+    critic_optimizer.step()
+    return loss1.item()
+
 
 # In[]:
 
@@ -64,11 +64,7 @@ for episode_i in range(train_episodes):
     done = False
     cur_state = torch.Tensor(env.reset())
 
-    if optimizer_algo == 'sgd':
-        scheduler.step()
-
-    # TODO : this has to be removed
-    history = list()
+    scheduler.step()
 
     while not done:
         # TODO : Use gaussian exploration for this
@@ -77,83 +73,45 @@ for episode_i in range(train_episodes):
         # take action in the environment
         next_state, reward, done, info = env.step(action.item())
 
+        u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
-        """
-        u_value = critic(cur_state)
         target = reward + gamma * u_value
-        critic_optimizer.zero_grad()
-        loss1 = mse_loss(input=u_value, target=target)
-        loss1.backward(retain_graph=True)
-        running_loss1_mean += loss1.item()
-        critic_optimizer.step()
-        
-        
+
+        if optimizer_algo == 'sgd':
+            critic_optimizer.zero_grad()
+            loss1 = mse_loss(input=u_value, target=target)
+            loss1.backward(retain_graph=True)
+            running_loss1_mean += loss1.item()
+            critic_optimizer.step()
+
+        elif optimizer_algo == 'batch':
+            # critic will be updated at the end of the episode
+            pass
+
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
-        # TODO : Verify the computation here
         #  the log probability times the Q of the action that you just took in that state
         loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
         loss2.backward()
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
-        """
 
         # add the transition to replay buffer
-        # replay_buffer.add(cur_state, action, next_state, reward, done)
+        replay_buffer.add(cur_state, action, next_state, reward, done)
 
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
-        # sample_transitions = replay_buffer.sample()
+        sample_transitions = replay_buffer.sample()
 
-        # # update the policy using the sampled transitions
-        # policy.update_policy(**sample_transitions)
+        # update the critic's q approximation using the sampled transitions
+        running_loss2_mean += update_critic(critic, critic_optimizer, **sample_transitions)
 
         episode_reward += reward
         episode_timestep += 1
 
-        history.append([cur_state, next_state, action, log_prob, reward])
-
         cur_state = torch.Tensor(next_state)
-
-    # TODO : This has to be removed
-    #  Now calculate the return
-    #  Here we calculate the return and update the loss in one step after the torch.sum function
-    if optimizer_algo == 'adam':
-        return_values = torch.Tensor()
-        log_probabilities = torch.Tensor()
-        for i in range(len(history)):
-            return_t = 0
-            el = 0
-            for j in range(i, len(history)):
-                return_t += np.power(gamma, el)*history[j][-1]
-                el += 1
-            return_values = torch.cat([return_values, torch.Tensor([return_t])])
-            log_probabilities = torch.cat([log_probabilities, history[i][3].reshape(-1)])
-        actor_optimizer.zero_grad()
-        # Scale rewards to reduce variance
-        return_values = (return_values - return_values.mean()) / return_values.std()
-        # -1 is important!!
-        loss2 = torch.sum(torch.mul(-1*log_probabilities, return_values))
-        loss2.backward()
-        running_loss2_mean += loss2.item()
-        actor_optimizer.step()
-
-    elif optimizer_algo == 'sgd':
-        for i in range(len(history)):
-            return_t = 0
-            el = 0
-            for j in range(i, len(history)):
-                return_t += np.power(gamma, el)*history[j][-1]
-                el += 1
-            actor_optimizer.zero_grad()
-            # here reward scaling cannot be done since no batch is available to us at all
-            # -1 is important!!
-            loss2 = torch.sum(torch.mul(-1*history[i][3].reshape(-1), torch.Tensor([return_t])))
-            loss2.backward()
-            running_loss2_mean += loss2.item()
-            actor_optimizer.step()
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
@@ -183,8 +141,8 @@ axes[0][0].set_ylabel('Timesteps')
 axes[0][1].plot(avg_history['episodes'], avg_history['reward'])
 axes[0][1].set_title('Reward per episode')
 axes[0][1].set_ylabel('Reward')
-# axes[1][0].set_title('Critic Loss')
-# axes[1][0].plot(loss1_history)
+axes[1][0].set_title('Critic Loss')
+axes[1][0].plot(loss1_history)
 axes[1][1].set_title('Actor Objective')
 axes[1][1].plot(loss2_history)
 

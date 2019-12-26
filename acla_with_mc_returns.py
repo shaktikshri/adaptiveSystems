@@ -1,9 +1,6 @@
 import torch
 import torch.optim as optim
 import gym
-from dqn import ReplayBuffer
-from torch.distributions import Categorical
-from torch.nn.functional import mse_loss
 import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -50,8 +47,6 @@ running_loss1_mean = 0
 running_loss2_mean = 0
 loss1_history = []
 loss2_history = []
-# initialize policy and replay buffer
-replay_buffer = ReplayBuffer()
 
 
 # In[]:
@@ -67,7 +62,6 @@ for episode_i in range(train_episodes):
     if optimizer_algo == 'sgd':
         scheduler.step()
 
-    # TODO : this has to be removed
     history = list()
 
     while not done:
