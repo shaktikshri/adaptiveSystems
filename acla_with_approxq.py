@@ -17,7 +17,8 @@ from actor_critic_structure import Actor, Critic
 
 
 # TODO : Tweaking the learning rate
-learning_rate = 1e-2
+actor_learning_rate = 1e-2
+critic_learning_rate = 1e-3
 train_episodes = 5000
 
 env = gym.make('CartPole-v1')
@@ -26,23 +27,23 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
-optimizer_algo = 'sgd'
-critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
+optimizer_algo = 'batch'
+critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
 
 if optimizer_algo == 'sgd':
-    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+    actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
 elif optimizer_algo == 'batch':
-    actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
+    actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
 # TODO : Can change the step size
-scheduler = StepLR(actor_optimizer, step_size=1000, gamma=0.1)
-scheduler = StepLR(critic_optimizer, step_size=1000, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=0.1)
+critic_scheduler = StepLR(critic_optimizer, step_size=100, gamma=0.1)
 
 
 gamma = 0.99
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
-agg_interval = 100
+agg_interval = 10
 avg_reward = 0.0
 avg_timestep = 0
 running_loss1_mean = 0
@@ -101,7 +102,7 @@ for episode_i in range(train_episodes):
         # the sampling is done every timestep and not every episode
         sample_transitions = replay_buffer.sample_pytorch()
         # update the critic's q approximation using the sampled transitions
-        running_loss2_mean += update_critic(**sample_transitions)
+        running_loss1_mean += update_critic(**sample_transitions)
 
         if optimizer_algo == 'sgd':
             # Update parameters of actor by policy gradient
@@ -116,7 +117,7 @@ for episode_i in range(train_episodes):
         elif optimizer_algo == 'batch':
             target_list = torch.cat([target_list, target])
             u_value_list = torch.cat([u_value_list, u_value])
-            log_prob_list = torch.cat([log_prob_list, log_prob])
+            log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
 
         episode_reward += reward
         episode_timestep += 1
@@ -146,10 +147,14 @@ for episode_i in range(train_episodes):
     avg_timestep = 0
     avg_reward = 0.0
 
-    scheduler.step()
+    actor_scheduler.step()
+    critic_scheduler.step()
 
     if (episode_i + 1) % agg_interval == 0:
-        print('Episode : ', episode_i+1, 'Learning Rate', scheduler.get_lr(), 'Loss : ', loss2_history[-1], 'Avg Timestep : ', avg_history['timesteps'][-1])
+        print('Episode : ', episode_i+1,
+              'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
+              'Actor Loss : ', loss2_history[-1], 'Critic Loss', loss1_history[-1],
+              'Avg Timestep : ', avg_history['timesteps'][-1])
 
 # In[]:
 import matplotlib.pyplot as plt
