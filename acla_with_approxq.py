@@ -17,7 +17,7 @@ from actor_critic_structure import Actor, Critic
 
 
 # TODO : Tweaking the learning rate
-learning_rate = 1e-4
+learning_rate = 1e-2
 train_episodes = 5000
 
 env = gym.make('CartPole-v1')
@@ -27,12 +27,12 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
 optimizer_algo = 'sgd'
+critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
+
 if optimizer_algo == 'sgd':
     actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
-    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
 elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
-    critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
 # gamma = decaying factor
 # TODO : Can change the step size
@@ -64,7 +64,7 @@ def update_critic(cur_states, actions, next_states, rewards, dones):
     expanded_targets = critic(cur_states).squeeze(-1)
     critic_optimizer.zero_grad()
     loss1 = mse_loss(input=expanded_targets, target=targets)
-    loss1.backward(retain_graph=True)
+    loss1.backward()
     critic_optimizer.step()
     return loss1.item()
 
@@ -79,7 +79,9 @@ for episode_i in range(train_episodes):
     done = False
     cur_state = torch.Tensor(env.reset())
 
-    scheduler.step()
+    log_prob_list = torch.Tensor()
+    u_value_list = torch.Tensor()
+    target_list = torch.Tensor()
 
     while not done:
         # TODO : Use gaussian exploration for this
@@ -94,30 +96,6 @@ for episode_i in range(train_episodes):
         # TODO : Use TD Lambda here and compare the performance
         target = reward + gamma * u_value
 
-        if optimizer_algo == 'sgd':
-            replay_buffer.add(cur_state, action, next_state, reward, done)
-            # sample minibatch of transitions from the replay buffer
-            # the sampling is done every timestep and not every episode
-            sample_transitions = replay_buffer.sample_pytorch()
-            # update the critic's q approximation using the sampled transitions
-            running_loss2_mean += update_critic(**sample_transitions)
-
-        elif optimizer_algo == 'batch':
-            # critic will be updated at the end of the episode
-            pass
-
-        # TODO : Make this full batch mode too and check any improvement
-        # Update parameters of actor by policy gradient
-        actor_optimizer.zero_grad()
-        # compute the gradient from the sampled log probability
-        #  the log probability times the Q of the action that you just took in that state
-        loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
-        loss2.backward()
-        running_loss2_mean += loss2.item()
-        actor_optimizer.step()
-
-    if optimizer_algo == 'batch':
-        # add the transition to replay buffer
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
@@ -125,10 +103,34 @@ for episode_i in range(train_episodes):
         # update the critic's q approximation using the sampled transitions
         running_loss2_mean += update_critic(**sample_transitions)
 
+        if optimizer_algo == 'sgd':
+            # Update parameters of actor by policy gradient
+            actor_optimizer.zero_grad()
+            # compute the gradient from the sampled log probability
+            #  the log probability times the Q of the action that you just took in that state
+            loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
+            loss2.backward()
+            running_loss2_mean += loss2.item()
+            actor_optimizer.step()
+
+        elif optimizer_algo == 'batch':
+            target_list = torch.cat([target_list, target])
+            u_value_list = torch.cat([u_value_list, u_value])
+            log_prob_list = torch.cat([log_prob_list, log_prob])
+
         episode_reward += reward
         episode_timestep += 1
-
         cur_state = next_state
+
+    if optimizer_algo == 'batch':
+        # Update parameters of actor by policy gradient
+        actor_optimizer.zero_grad()
+        # compute the gradient from the sampled log probability
+        #  the log probability times the Q of the action that you just took in that state
+        loss2 = torch.sum(torch.mul(-log_prob_list, target_list - u_value_list))  # the advantage function used is the TD error
+        loss2.backward()
+        running_loss2_mean += loss2.item()
+        actor_optimizer.step()
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
@@ -143,6 +145,8 @@ for episode_i in range(train_episodes):
     avg_history['reward'].append(avg_reward)
     avg_timestep = 0
     avg_reward = 0.0
+
+    scheduler.step()
 
     if (episode_i + 1) % agg_interval == 0:
         print('Episode : ', episode_i+1, 'Learning Rate', scheduler.get_lr(), 'Loss : ', loss2_history[-1], 'Avg Timestep : ', avg_history['timesteps'][-1])
