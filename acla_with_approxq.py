@@ -10,7 +10,12 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from actor_critic_structure import Actor, Critic
 
 # In[]:
+# TODO :
+#  1. Use dropouts
+#  2. LR Scheduler
 
+
+# TODO : Tweaking the learning rate
 learning_rate = 1e-4
 train_episodes = 5000
 
@@ -21,11 +26,18 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
 optimizer_algo = 'sgd'
-actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
-critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+if optimizer_algo == 'sgd':
+    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+elif optimizer_algo == 'batch':
+    actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 
 # gamma = decaying factor
+# TODO : Can change the step size
 scheduler = StepLR(actor_optimizer, step_size=1000, gamma=0.1)
+scheduler = StepLR(critic_optimizer, step_size=1000, gamma=0.1)
+
 
 gamma = 0.99
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
@@ -41,6 +53,7 @@ replay_buffer = ReplayBuffer()
 
 # In[]:
 
+
 def update_critic(critic, critic_optimizer, cur_states, actions, next_states, rewards, dones):
     # target doesnt change when its terminal, thus multiply with (1-done)
     # target = R(st-1, at-1) + gamma * max(a') Q(st, a')
@@ -48,6 +61,7 @@ def update_critic(critic, critic_optimizer, cur_states, actions, next_states, re
     # expanded_targets are the Q values of all the actions for the current_states sampled
     # from the previous experience. These are the predictions
     expanded_targets = critic(cur_states)
+    critic_optimizer.zero_grad()
     loss1 = mse_loss(input=expanded_targets, target=targets)
     loss1.backward()
     critic_optimizer.step()
@@ -72,6 +86,7 @@ for episode_i in range(train_episodes):
 
         # take action in the environment
         next_state, reward, done, info = env.step(action.item())
+        next_state = torch.Tensor(next_state)
 
         u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
@@ -89,6 +104,7 @@ for episode_i in range(train_episodes):
             # critic will be updated at the end of the episode
             pass
 
+        # TODO : Make this full batch mode too and check any improvement
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
@@ -98,20 +114,19 @@ for episode_i in range(train_episodes):
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
 
+    if optimizer_algo == 'batch':
         # add the transition to replay buffer
         replay_buffer.add(cur_state, action, next_state, reward, done)
-
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
-        sample_transitions = replay_buffer.sample()
-
+        sample_transitions = replay_buffer.sample_pytorch()
         # update the critic's q approximation using the sampled transitions
         running_loss2_mean += update_critic(critic, critic_optimizer, **sample_transitions)
 
         episode_reward += reward
         episode_timestep += 1
 
-        cur_state = torch.Tensor(next_state)
+        cur_state = next_state
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
