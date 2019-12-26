@@ -70,7 +70,7 @@ class Actor(nn.Module):
 
 
 learning_rate = 0.001
-train_episodes = 3000
+train_episodes = 5000
 
 env = gym.make('CartPole-v1')
 actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_space.n)
@@ -161,18 +161,23 @@ for episode_i in range(train_episodes):
 
     # TODO : This has to be removed
     #  Now calculate the return
-    return_val = 0
+    #  Here we calculate the return and update the loss in one step after the torch.sum function
+    return_values = torch.Tensor()
+    log_probabilities = torch.Tensor()
     for i in range(len(history)):
         return_t = 0
         el = 0
         for j in range(i, len(history)):
-            return_t += np.exp(gamma, el)*history[j][-1]
+            return_t += np.power(gamma, el)*history[j][-1]
             el += 1
-        actor_optimizer.zero_grad()
-        loss2 = -history[i][3] * return_t # the advantage function used is the TD error
-        loss2.backward()
-        running_loss2_mean += loss2.item()
-        actor_optimizer.step()
+        return_values = torch.cat([return_values, torch.Tensor([return_t])])
+        log_probabilities = torch.cat([log_probabilities, history[i][3].reshape(-1)])
+    actor_optimizer.zero_grad()
+    # -1 is important!!
+    loss2 = torch.sum(torch.mul(-1*log_probabilities, return_values))
+    loss2.backward()
+    running_loss2_mean += loss2.item()
+    actor_optimizer.step()
 
 
     loss1_history.append(running_loss1_mean/episode_timestep)
@@ -183,13 +188,14 @@ for episode_i in range(train_episodes):
     avg_reward += episode_reward
     avg_timestep += episode_timestep
 
+    avg_history['episodes'].append(episode_i + 1)
+    avg_history['timesteps'].append(avg_timestep)
+    avg_history['reward'].append(avg_reward)
+    avg_timestep = 0
+    avg_reward = 0.0
+
     if (episode_i + 1) % agg_interval == 0:
-        avg_history['episodes'].append(episode_i + 1)
-        avg_history['timesteps'].append(avg_timestep / float(agg_interval))
-        avg_history['reward'].append(avg_reward / float(agg_interval))
-        avg_timestep = 0
-        avg_reward = 0.0
-        print('Episode : ', episode_i+1, 'Loss : ', loss2_history[-1])
+        print('Episode : ', episode_i+1, 'Loss : ', loss2_history[-1], 'Avg Timestep : ', avg_history['timesteps'][-1])
 
 # In[]:
 import matplotlib.pyplot as plt
