@@ -13,6 +13,7 @@ from actor_critic_structure import Actor, Critic
 # TODO :
 #  1. Use dropouts
 #  2. LR Scheduler
+#  3. Reward scaling in full batch mode
 
 
 # TODO : Tweaking the learning rate
@@ -54,13 +55,13 @@ replay_buffer = ReplayBuffer()
 # In[]:
 
 
-def update_critic(critic, critic_optimizer, cur_states, actions, next_states, rewards, dones):
+def update_critic(cur_states, actions, next_states, rewards, dones):
     # target doesnt change when its terminal, thus multiply with (1-done)
     # target = R(st-1, at-1) + gamma * max(a') Q(st, a')
-    targets = rewards + np.multiply(1 - dones, critic.gamma * (critic(next_states)))
+    targets = rewards + torch.mul(1 - dones, gamma*critic(next_states).squeeze(-1) )
     # expanded_targets are the Q values of all the actions for the current_states sampled
     # from the previous experience. These are the predictions
-    expanded_targets = critic(cur_states)
+    expanded_targets = critic(cur_states).squeeze(-1)
     critic_optimizer.zero_grad()
     loss1 = mse_loss(input=expanded_targets, target=targets)
     loss1.backward(retain_graph=True)
@@ -99,7 +100,7 @@ for episode_i in range(train_episodes):
             # the sampling is done every timestep and not every episode
             sample_transitions = replay_buffer.sample_pytorch()
             # update the critic's q approximation using the sampled transitions
-            running_loss2_mean += update_critic(critic, critic_optimizer, **sample_transitions)
+            running_loss2_mean += update_critic(**sample_transitions)
 
         elif optimizer_algo == 'batch':
             # critic will be updated at the end of the episode
@@ -122,7 +123,7 @@ for episode_i in range(train_episodes):
         # the sampling is done every timestep and not every episode
         sample_transitions = replay_buffer.sample_pytorch()
         # update the critic's q approximation using the sampled transitions
-        running_loss2_mean += update_critic(critic, critic_optimizer, **sample_transitions)
+        running_loss2_mean += update_critic(**sample_transitions)
 
         episode_reward += reward
         episode_timestep += 1
