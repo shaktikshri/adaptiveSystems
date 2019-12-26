@@ -2,6 +2,8 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.optimizers import Adam
 import numpy as np
+import torch
+
 
 # Define the policy and replay buffer
 class DQNPolicy:
@@ -88,4 +90,24 @@ class ReplayBuffer:
             sample_transitions['next_states'] = np.array(self.next_states)
             sample_transitions['rewards'] = np.array(self.rewards)
             sample_transitions['dones'] = np.array(self.dones)
+        return sample_transitions
+
+    def sample_pytorch(self, sample_size=32):
+        sample_transitions = {}
+        if self.__len__() >= sample_size:
+            # pick up only random 32 events from the memory
+            indices = np.random.choice(self.__len__(), size=sample_size)
+            sample_transitions['cur_states'] = torch.stack(self.cur_states)[indices]
+            sample_transitions['actions'] = torch.stack(self.actions)[indices]
+            sample_transitions['next_states'] = torch.stack(self.next_states)[indices]
+            sample_transitions['rewards'] = torch.Tensor(self.rewards)[indices]
+            sample_transitions['dones'] = torch.Tensor(self.dones)[indices]
+        else:
+            # if the current buffer size is not greater than 32 then pick up the entire memory
+            sample_transitions['cur_states'] = torch.stack(self.cur_states)
+            sample_transitions['actions'] = torch.stack(self.actions)
+            sample_transitions['next_states'] = torch.stack(self.next_states)
+            sample_transitions['rewards'] = torch.Tensor(self.rewards)
+            sample_transitions['dones'] = torch.Tensor(self.dones)
+
         return sample_transitions
