@@ -6,12 +6,17 @@ from dqn import ReplayBuffer
 from torch.distributions import Categorical
 from torch.nn.functional import mse_loss
 import numpy as np
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+# In[]:
 
 # TODO : 
 #  1. Experience replay
 #  2. Fixing target
 #  3. Learning rate decay with a scheduler
+#  4. dropouts will improve the learning
+
 
 class Critic(nn.Module):
     def __init__(self, input_size, output_size=1, hidden_size=12):
@@ -69,7 +74,7 @@ class Actor(nn.Module):
         return action, m.log_prob(action)
 
 
-learning_rate = 0.001
+learning_rate = 1e-4
 train_episodes = 5000
 
 env = gym.make('CartPole-v1')
@@ -78,15 +83,28 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
 
-optimizer_algo = 'adam'
+optimizer_algo = 'sgd'
+decaying_algo = 'step'
+
 if optimizer_algo == 'adam':
     actor_optimizer = optim.Adam(actor.parameters(), lr=learning_rate)
     critic_optimizer = optim.Adam(critic.parameters(), lr=learning_rate)
 elif optimizer_algo == 'sgd':
-    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8)
-    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8)
+    actor_optimizer = optim.SGD(actor.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
+    critic_optimizer = optim.SGD(critic.parameters(), lr=learning_rate, momentum=0.8, nesterov=True)
 
-gamma = 0.95
+    if decaying_algo == 'step':
+        # gamma = decaying factor
+        scheduler = StepLR(actor_optimizer, step_size=1000, gamma=0.1)
+
+    # We cant use plateau decay here since the gradient is very noisy for stochastic estimates,
+    # nothing plateaus at all !
+    # elif decaying_algo == 'plateau':
+    #     # patience: number of epochs - 1 where loss plateaus before decreasing LR
+    #     # patience = 0, after 1 bad epoch, reduce LR. New lr = lr * factor
+    #     scheduler = ReduceLROnPlateau(actor_optimizer, mode='max', factor=0.1, patience=0, verbose=True)
+
+gamma = 0.99
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
 agg_interval = 100
 avg_reward = 0.0
@@ -109,9 +127,10 @@ for episode_i in range(train_episodes):
     episode_reward = 0.0
 
     done = False
-
     cur_state = torch.Tensor(env.reset())
 
+    if optimizer_algo == 'sgd':
+        scheduler.step()
 
     # TODO : this has to be removed
     history = list()
@@ -179,6 +198,8 @@ for episode_i in range(train_episodes):
             return_values = torch.cat([return_values, torch.Tensor([return_t])])
             log_probabilities = torch.cat([log_probabilities, history[i][3].reshape(-1)])
         actor_optimizer.zero_grad()
+        # Scale rewards to reduce variance
+        return_values = (return_values - return_values.mean()) / return_values.std()
         # -1 is important!!
         loss2 = torch.sum(torch.mul(-1*log_probabilities, return_values))
         loss2.backward()
@@ -193,6 +214,7 @@ for episode_i in range(train_episodes):
                 return_t += np.power(gamma, el)*history[j][-1]
                 el += 1
             actor_optimizer.zero_grad()
+            # here reward scaling cannot be done since no batch is available to us at all
             # -1 is important!!
             loss2 = torch.sum(torch.mul(-1*history[i][3].reshape(-1), torch.Tensor([return_t])))
             loss2.backward()
@@ -214,7 +236,7 @@ for episode_i in range(train_episodes):
     avg_reward = 0.0
 
     if (episode_i + 1) % agg_interval == 0:
-        print('Episode : ', episode_i+1, 'Loss : ', loss2_history[-1], 'Avg Timestep : ', avg_history['timesteps'][-1])
+        print('Episode : ', episode_i+1, 'Learning Rate', scheduler.get_lr(), 'Loss : ', loss2_history[-1], 'Avg Timestep : ', avg_history['timesteps'][-1])
 
 # In[]:
 import matplotlib.pyplot as plt
@@ -227,13 +249,14 @@ axes[0][0].set_ylabel('Timesteps')
 axes[0][1].plot(avg_history['episodes'], avg_history['reward'])
 axes[0][1].set_title('Reward per episode')
 axes[0][1].set_ylabel('Reward')
-axes[1][0].set_title('Critic Loss')
-axes[1][0].plot(loss1_history)
-axes[1][1].set_title('Actor Loss')
+# axes[1][0].set_title('Critic Loss')
+# axes[1][0].plot(loss1_history)
+axes[1][1].set_title('Actor Objective')
 axes[1][1].plot(loss2_history)
 
 plt.show()
 
+# In[]:
 
 cur_state = env.reset()
 total_step = 0
