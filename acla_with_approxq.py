@@ -63,7 +63,7 @@ def update_critic(critic, critic_optimizer, cur_states, actions, next_states, re
     expanded_targets = critic(cur_states)
     critic_optimizer.zero_grad()
     loss1 = mse_loss(input=expanded_targets, target=targets)
-    loss1.backward()
+    loss1.backward(retain_graph=True)
     critic_optimizer.step()
     return loss1.item()
 
@@ -94,11 +94,12 @@ for episode_i in range(train_episodes):
         target = reward + gamma * u_value
 
         if optimizer_algo == 'sgd':
-            critic_optimizer.zero_grad()
-            loss1 = mse_loss(input=u_value, target=target)
-            loss1.backward(retain_graph=True)
-            running_loss1_mean += loss1.item()
-            critic_optimizer.step()
+            replay_buffer.add(cur_state, action, next_state, reward, done)
+            # sample minibatch of transitions from the replay buffer
+            # the sampling is done every timestep and not every episode
+            sample_transitions = replay_buffer.sample_pytorch()
+            # update the critic's q approximation using the sampled transitions
+            running_loss2_mean += update_critic(critic, critic_optimizer, **sample_transitions)
 
         elif optimizer_algo == 'batch':
             # critic will be updated at the end of the episode
