@@ -8,9 +8,11 @@ import numpy as np
 from torch.optim.lr_scheduler import StepLR
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from actor_critic_structure import Actor, Critic
+from  copy import deepcopy
 
 # In[]:
 # TODO :
+#  2. Use Gaussian exploration while selecting the action
 #  1. Use dropouts
 #  2. LR Scheduler
 #  3. Reward scaling in full batch mode
@@ -26,10 +28,16 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_
 
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1)
+# critic_old is used for fixing the target in learning the V function
+critic_old = deepcopy(critic)
+copy_epoch = 500
 
-optimizer_algo = 'batch'
+optimizer_algo = 'sgd'
+
+# Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
 
+# actor is optimized either in batch or sgd
 if optimizer_algo == 'sgd':
     actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
 elif optimizer_algo == 'batch':
@@ -74,6 +82,11 @@ def update_critic(cur_states, actions, next_states, rewards, dones):
 
 # Train the network to predict actions for each of the states
 for episode_i in range(train_episodes):
+
+    # make a copy every copy_epoch epochs
+    if episode_i % copy_epoch == 0:
+        critic_old = deepcopy(critic)
+
     episode_timestep = 0
     episode_reward = 0.0
 
@@ -95,7 +108,8 @@ for episode_i in range(train_episodes):
         u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
-        target = reward + gamma * u_value
+        # move towards the fixed target, as per the older critic's prediction
+        target = reward + gamma * critic_old(cur_state)
 
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
@@ -151,10 +165,15 @@ for episode_i in range(train_episodes):
     critic_scheduler.step()
 
     if (episode_i + 1) % agg_interval == 0:
+        # print('Episode : ', episode_i+1,
+        #       'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
+        #       'Actor Loss : ', loss2_history[-1], 'Critic Loss', loss1_history[-1],
+        #       'Avg Timestep : ', avg_history['timesteps'][-1])
         print('Episode : ', episode_i+1,
-              'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
-              'Actor Loss : ', loss2_history[-1], 'Critic Loss', loss1_history[-1],
-              'Avg Timestep : ', avg_history['timesteps'][-1])
+            'critic lr : ', critic_scheduler.get_lr(),
+            'Critic Loss', loss1_history[-1],
+            'Avg Timestep : ', avg_history['timesteps'][-1])
+
 
 # In[]:
 import matplotlib.pyplot as plt
