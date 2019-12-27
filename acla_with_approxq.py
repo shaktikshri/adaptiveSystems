@@ -13,10 +13,7 @@ from copy import deepcopy
 # In[]:
 # TODO :
 #  1. Use dropouts
-#  3. Reward scaling in full batch mode
 
-
-# TODO : Tweaking the learning rate
 actor_learning_rate = 1e-2
 critic_learning_rate = 1e-3
 train_episodes = 5000
@@ -42,7 +39,6 @@ elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
-# TODO : Can change the step size
 actor_scheduler = StepLR(actor_optimizer, step_size=100, gamma=0.1)
 critic_scheduler = StepLR(critic_optimizer, step_size=100, gamma=0.1)
 
@@ -143,12 +139,13 @@ for episode_i in range(train_episodes):
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
         #  the log probability times the Q of the action that you just took in that state
-        # TODO : Uncomment this if scaling doesnt perform better
-        """
-        loss2 = torch.sum(torch.mul(-log_prob_list, target_list - u_value_list))  # the advantage function used is the TD error
-        """
 
-        # TODO : Check if this reward scaling performs any better? Remove it if not
+        """Important note"""
+        # Reward scaling, this performs much better.
+        # In the general case this might not be a good idea. If there are rare events with extremely high rewards
+        # that only occur in some episodes, and the majority of episodes only experience common events with
+        # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
+        # since all the rewards are 1 itself
         multiplication_factor = target_list - u_value_list
         multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
         loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
@@ -179,10 +176,6 @@ for episode_i in range(train_episodes):
               'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
               'Actor Loss : ', loss2_history[-1], 'Critic Loss', loss1_history[-1],
               'Avg Timestep : ', avg_history['timesteps'][-1])
-        # print('Episode : ', episode_i+1,
-        #     'critic lr : ', critic_scheduler.get_lr(),
-        #     'Critic Loss', loss1_history[-1],
-        #     'Avg Timestep : ', avg_history['timesteps'][-1])
 
 
 # In[]:

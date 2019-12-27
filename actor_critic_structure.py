@@ -11,9 +11,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 # In[]:
 
 # TODO :
-#  1. Experience replay
 #  2. Fixing target
-#  3. Learning rate decay with a scheduler
 #  4. dropouts will improve the learning
 
 
