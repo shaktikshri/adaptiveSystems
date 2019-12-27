@@ -72,8 +72,8 @@ class Actor(nn.Module):
         :return: the chosen action and the log probility of that chosen action
         """
         probs = self(current_state)
-        # TODO : This can be made as gaussian exploration and then exploring action can be sampled from there
+        # No gaussian exploration can be performed since the actions are discrete and not continuous
+        # gaussian would make sense and feasibility only when actions are continuous
         m = Categorical(probs)
         action = m.sample()
         return action, m.log_prob(action)
-
