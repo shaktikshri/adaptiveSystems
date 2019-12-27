@@ -12,15 +12,13 @@ from copy import deepcopy
 
 # In[]:
 # TODO :
-#  2. Use Gaussian exploration while selecting the action
 #  1. Use dropouts
-#  2. LR Scheduler
 #  3. Reward scaling in full batch mode
 
 
 # TODO : Tweaking the learning rate
 actor_learning_rate = 1e-2
-critic_learning_rate = 1e-4
+critic_learning_rate = 1e-3
 train_episodes = 5000
 
 env = gym.make('CartPole-v1')
@@ -32,7 +30,7 @@ critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden
 critic_old = deepcopy(critic)
 copy_epoch = 100
 
-optimizer_algo = 'sgd'
+optimizer_algo = 'batch'
 
 # Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
@@ -45,8 +43,8 @@ elif optimizer_algo == 'batch':
 
 # gamma = decaying factor
 # TODO : Can change the step size
-actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=0.1)
-critic_scheduler = StepLR(critic_optimizer, step_size=200, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=100, gamma=0.1)
+critic_scheduler = StepLR(critic_optimizer, step_size=100, gamma=0.1)
 
 
 gamma = 0.99
@@ -136,24 +134,6 @@ for episode_i in range(train_episodes):
             u_value_list = torch.cat([u_value_list, u_value])
             log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
 
-
-
-
-        # TODO : This has to be removed, this form of training is not viable at all!
-        if optimizer_algo == 'batch':
-            # Update parameters of actor by policy gradient
-            actor_optimizer.zero_grad()
-            # compute the gradient from the sampled log probability
-            #  the log probability times the Q of the action that you just took in that state
-            loss2 = torch.sum(
-                torch.mul(-log_prob_list, target_list - u_value_list))  # the advantage function used is the TD error
-            loss2.backward()
-            running_loss2_mean += loss2.item()
-            actor_optimizer.step()
-
-
-
-
         episode_reward += reward
         episode_timestep += 1
         cur_state = next_state
@@ -163,7 +143,16 @@ for episode_i in range(train_episodes):
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
         #  the log probability times the Q of the action that you just took in that state
+        # TODO : Uncomment this if scaling doesnt perform better
+        """
         loss2 = torch.sum(torch.mul(-log_prob_list, target_list - u_value_list))  # the advantage function used is the TD error
+        """
+
+        # TODO : Check if this reward scaling performs any better? Remove it if not
+        multiplication_factor = target_list - u_value_list
+        multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
+        loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
+
         loss2.backward()
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
