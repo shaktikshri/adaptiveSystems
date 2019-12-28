@@ -10,9 +10,44 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from actor_critic_structure import Actor, Critic
 from copy import deepcopy
 
+
+# In[]:
+
+class ActorReplayBuffer:
+    def __init__(self, max_size=2000):
+        self.max_size = max_size
+        self.target = []
+        self.predicted = []
+        self.gradient = []
+
+    def __len__(self):
+        return len(self.target)
+
+    def add(self, target, predicted, gradient):
+        self.target.append(target)
+        self.predicted.append(predicted)
+        self.gradient.append(gradient)
+
+    def sample(self, sample_size=32):
+        sample_objectives = {}
+        if self.__len__() >= sample_size:
+            # pick up only random 32 events from the memory
+            indices = np.random.choice(self.__len__(), size=sample_size)
+            sample_objectives['target'] = torch.stack(self.target)[indices]
+            sample_objectives['predicted'] = torch.stack(self.predicted)[indices]
+            sample_objectives['gradient'] = torch.stack(self.gradient)[indices]
+        else:
+            # if the current buffer size is not greater than 32 then pick up the entire memory
+            sample_objectives['target'] = torch.stack(self.target)
+            sample_objectives['predicted'] = torch.stack(self.predicted)
+            sample_objectives['gradient'] = torch.stack(self.gradient)
+
+        return sample_objectives
+
 # In[]:
 # TODO :
 #  1. Use dropouts
+#  2. fix targets in critic, should this be done for actor as well?
 
 actor_learning_rate = 1e-2
 critic_learning_rate = 1e-3
@@ -39,7 +74,7 @@ elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
-actor_scheduler = StepLR(actor_optimizer, step_size=100, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=200, gamma=0.1)
 critic_scheduler = StepLR(critic_optimizer, step_size=100, gamma=0.1)
 
 
@@ -54,6 +89,8 @@ loss1_history = []
 loss2_history = []
 # initialize policy and replay buffer
 replay_buffer = ReplayBuffer()
+actor_replay_buffer = ActorReplayBuffer()
+
 
 # In[]:
 
@@ -95,7 +132,6 @@ for episode_i in range(train_episodes):
     target_list = torch.Tensor()
 
     while not done:
-        # TODO : Use gaussian exploration for this
         action, log_prob = actor.select_action(cur_state)
 
         # take action in the environment
