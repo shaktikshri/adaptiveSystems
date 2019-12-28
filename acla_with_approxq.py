@@ -198,8 +198,11 @@ for episode_i in range(train_episodes):
 
     # TODO : Remove this if it doesnt improve the convergence
     critic_optimizer.zero_grad()
-    loss1 = mse_loss(input=u_value_list, target=target_list)
+    u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
+    target_list_copy = (target_list - target_list.mean()) / target_list.std()
+    loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy)
     loss1.backward(retain_graph=True)
+    running_loss1_mean += loss1.item()
     critic_optimizer.step()
 
 
