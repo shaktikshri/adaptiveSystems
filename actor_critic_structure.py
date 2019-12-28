@@ -51,6 +51,10 @@ class Actor(nn.Module):
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU()
         )
+        self.layer3 = nn.Sequential(
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU()
+        )
         self.output_layer = nn.Sequential(
             nn.Linear(hidden_size, output_size),
             # TODO : Try out log here if any numerical instability occurs
@@ -60,6 +64,7 @@ class Actor(nn.Module):
     def forward(self, x):
         out = self.layer1(x)
         out = self.layer2(out)
+        out = self.layer3(out)
         out = self.output_layer(out)
         return out
 
