@@ -49,7 +49,7 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-3
+actor_learning_rate = 1e-1
 critic_learning_rate = 1e-3
 train_episodes = 5000
 
@@ -62,16 +62,16 @@ critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden
 critic_old = deepcopy(critic)
 copy_epoch = 100
 
-optimizer_algo = 'batch'
+# optimizer_algo = 'batch'
 
 # Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
 
 # actor is optimized either in batch or sgd
-if optimizer_algo == 'sgd':
-    actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
-elif optimizer_algo == 'batch':
-    actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
+# if optimizer_algo == 'sgd':
+#     actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
+# elif optimizer_algo == 'batch':
+actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
 actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=0.1)
@@ -137,16 +137,9 @@ for episode_i in range(train_episodes):
 
         u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
-        # TODO : Use TD Lambda here and compare the performance
-
-        # TODO : Uncomment this line if 1-done is a wrong concept in actor
-        # target = reward + gamma * critic(next_state)
         # Using 1-done even in the target for actor since the next state wont have any meaning when done=1
-        # TODO : Remove this line if 1-done is a wrong concept in actor
         target = reward + gamma * (1-done) * critic(next_state)
 
-
-        # TODO : Checking if removing replay buffer and updating Q in batches improves anything
         """
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
@@ -175,28 +168,26 @@ for episode_i in range(train_episodes):
         # running_loss2_mean += loss2.item()
         # actor_optimizer.step()
 
-        if optimizer_algo == 'sgd':
-            # Update parameters of actor by policy gradient
-            actor_optimizer.zero_grad()
-            # compute the gradient from the sampled log probability
-            #  the log probability times the Q of the action that you just took in that state
-            # TODO : the target here is still a moving target, see if fixing this for sometime leads to any improvement
-            loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
-            loss2.backward()
-            running_loss2_mean += loss2.item()
-            actor_optimizer.step()
+        # if optimizer_algo == 'sgd':
+        #     # Update parameters of actor by policy gradient
+        #     actor_optimizer.zero_grad()
+        #     # compute the gradient from the sampled log probability
+        #     #  the log probability times the Q of the action that you just took in that state
+        #     loss2 = -log_prob * (target - u_value) # the advantage function used is the TD error
+        #     loss2.backward()
+        #     running_loss2_mean += loss2.item()
+        #     actor_optimizer.step()
 
-        elif optimizer_algo == 'batch':
-            target_list = torch.cat([target_list, target])
-            u_value_list = torch.cat([u_value_list, u_value])
-            log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
+        # elif optimizer_algo == 'batch':
+        target_list = torch.cat([target_list, target])
+        u_value_list = torch.cat([u_value_list, u_value])
+        log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
 
         episode_reward += reward
         episode_timestep += 1
         cur_state = next_state
 
 
-    # TODO : Remove this if it doesnt improve the convergence
     critic_optimizer.zero_grad()
     u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
     target_list_copy = (target_list - target_list.mean()) / target_list.std()
@@ -205,8 +196,8 @@ for episode_i in range(train_episodes):
     running_loss1_mean += loss1.item()
     critic_optimizer.step()
 
-
-    if optimizer_algo == 'batch':
+    # if optimizer_algo == 'batch':
+    if 1==1:
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
