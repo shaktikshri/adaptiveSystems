@@ -49,7 +49,7 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-2
+actor_learning_rate = 1e-3
 critic_learning_rate = 1e-3
 train_episodes = 5000
 
@@ -74,8 +74,8 @@ elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
-actor_scheduler = StepLR(actor_optimizer, step_size=30, gamma=0.1)
-critic_scheduler = StepLR(critic_optimizer, step_size=100, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=0.1)
+critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=0.1)
 
 
 gamma = 0.99
@@ -96,12 +96,9 @@ actor_replay_buffer = ActorReplayBuffer()
 
 
 def update_critic(cur_states, actions, next_states, rewards, dones):
+
     # target doesnt change when its terminal, thus multiply with (1-done)
-    # target = R(st-1, at-1) + gamma * max(a') Q(st, a')
-
-    # move towards the fixed target, as per the older critic's prediction
     targets = rewards + torch.mul(1 - dones, gamma*critic(next_states).squeeze(-1) )
-
     # expanded_targets are the Q values of all the actions for the current_states sampled
     # from the previous experience. These are the predictions
     expanded_targets = critic(cur_states).squeeze(-1)
@@ -141,35 +138,43 @@ for episode_i in range(train_episodes):
         u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
-        target = reward + gamma * critic(next_state)
 
+        # TODO : Uncomment this line if 1-done is a wrong concept in actor
+        # target = reward + gamma * critic(next_state)
+        # Using 1-done even in the target for actor since the next state wont have any meaning when done=1
+        # TODO : Remove this line if 1-done is a wrong concept in actor
+        target = reward + gamma * (1-done) * critic(next_state)
+
+
+        # TODO : Checking if removing replay buffer and updating Q in batches improves anything
+        """
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
         sample_transitions = replay_buffer.sample_pytorch()
         # update the critic's q approximation using the sampled transitions
         running_loss1_mean += update_critic(**sample_transitions)
-
-        actor_replay_buffer.add(target, u_value, -log_prob)
-        sample_objectives = actor_replay_buffer.sample(sample_size=32)
-        actor_optimizer.zero_grad()
-        # compute the gradient from the sampled log probability
-        #  the log probability times the Q of the action that you just took in that state
-        """Important note"""
-        # Reward scaling, this performs much better.
-        # In the general case this might not be a good idea. If there are rare events with extremely high rewards
-        # that only occur in some episodes, and the majority of episodes only experience common events with
-        # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
-        # since all the rewards are 1 itself
-        multiplication_factor = sample_objectives['target'] - sample_objectives['predicted']
-        multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / ( multiplication_factor.std(unbiased=False) + 1e-8)
-        loss2 = torch.sum(torch.mul(sample_objectives['gradient'], multiplication_factor))  # the advantage function used is the TD error
-        loss2.backward(retain_graph=True)
-        running_loss2_mean += loss2.item()
-        actor_optimizer.step()
-
-        # TODO : CHecking if experience replay for actor performs any better, to uncomment this if it doesnt
         """
+
+        # this section was for actor experience replay, which to my dismay performed much worse than without replay
+        # actor_replay_buffer.add(target, u_value, -log_prob)
+        # sample_objectives = actor_replay_buffer.sample(sample_size=32)
+        # actor_optimizer.zero_grad()
+        # # compute the gradient from the sampled log probability
+        # #  the log probability times the Q of the action that you just took in that state
+        # """Important note"""
+        # # Reward scaling, this performs much better.
+        # # In the general case this might not be a good idea. If there are rare events with extremely high rewards
+        # # that only occur in some episodes, and the majority of episodes only experience common events with
+        # # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
+        # # since all the rewards are 1 itself
+        # multiplication_factor = sample_objectives['target'] - sample_objectives['predicted']
+        # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / ( multiplication_factor.std(unbiased=False) + 1e-8)
+        # loss2 = torch.sum(torch.mul(sample_objectives['gradient'], multiplication_factor))  # the advantage function used is the TD error
+        # loss2.backward(retain_graph=True)
+        # running_loss2_mean += loss2.item()
+        # actor_optimizer.step()
+
         if optimizer_algo == 'sgd':
             # Update parameters of actor by policy gradient
             actor_optimizer.zero_grad()
@@ -185,21 +190,26 @@ for episode_i in range(train_episodes):
             target_list = torch.cat([target_list, target])
             u_value_list = torch.cat([u_value_list, u_value])
             log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
-        """
 
         episode_reward += reward
         episode_timestep += 1
         cur_state = next_state
 
-    # TODO : CHecking if experience replay for actor performs any better, to uncomment this if it doesnt
-    """
+
+    # TODO : Remove this if it doesnt improve the convergence
+    critic_optimizer.zero_grad()
+    loss1 = mse_loss(input=u_value_list, target=target_list)
+    loss1.backward(retain_graph=True)
+    critic_optimizer.step()
+
+
     if optimizer_algo == 'batch':
         # Update parameters of actor by policy gradient
         actor_optimizer.zero_grad()
         # compute the gradient from the sampled log probability
         #  the log probability times the Q of the action that you just took in that state
 
-        """"""Important note""""""
+        """Important note"""
         # Reward scaling, this performs much better.
         # In the general case this might not be a good idea. If there are rare events with extremely high rewards
         # that only occur in some episodes, and the majority of episodes only experience common events with
@@ -212,7 +222,7 @@ for episode_i in range(train_episodes):
         loss2.backward()
         running_loss2_mean += loss2.item()
         actor_optimizer.step()
-    """
+
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
     running_loss1_mean = 0
