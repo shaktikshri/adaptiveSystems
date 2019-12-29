@@ -46,7 +46,7 @@ Critic Learning Algorithm (ACLA). I tried out the following configurations,
 Out of all these, updating Critic with experience replay without target scaling and actor in batch along with target scaling gave the best performance.
 The environment was CartPole-v1. Timesteps of 500 were achieved within 100 episodes, a further learning rate decay for both actor and critic is expected to speed up this convergence.
 ![Experience Replay Critic + Batch Update Actor](RL_Benchmarks/fig1.png)
-
+The actor still has a high variance even though I used a one step TD error as the advantage. However this variance seems to die off once the convergence is achieved, something I'm still trying to explain to myself.
 
 PS. I am working on this file right now so it can appear a bit messed up, please excuse me for it :)
 
