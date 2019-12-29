@@ -1,3 +1,8 @@
+### CartPole-v0
+
+### Script
+The code is available here [playing_cartpole.py](playing_cartpole.py)
+
 ### Architecture
 
 1. Critic : Network to approximate the value function <br> state_dimension -> 12 -> 12 -> 12 -> 1
