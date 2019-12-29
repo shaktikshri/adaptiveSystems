@@ -49,8 +49,8 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-3
-critic_learning_rate = 1e-3
+actor_learning_rate = 1e-2
+critic_learning_rate = 1e-2
 train_episodes = 5000
 
 env = gym.make('CartPole-v1')
