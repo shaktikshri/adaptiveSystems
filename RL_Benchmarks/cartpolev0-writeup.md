@@ -15,17 +15,17 @@ Critic uses TD(0) learning + experience replay with buffer size 32.
 
 ### Training
 ```
-Episode :  10 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.010201778676774766 Critic Loss 588.0338168674045 Avg Timestep :  18
-Episode :  20 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  0.006513764983729312 Critic Loss 477.68187994706005 Avg Timestep :  19
-Episode :  30 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.1845457323135868 Critic Loss 388.1130636892011 Avg Timestep :  31
-Episode :  40 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  0.009060933401710108 Critic Loss 349.33526310167815 Avg Timestep :  76
-Episode :  50 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  0.006917795382047954 Critic Loss 374.57152581465874 Avg Timestep :  95
-Episode :  60 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.13249082918520327 Critic Loss 338.935127682156 Avg Timestep :  108
-Episode :  70 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.035215601921081544 Critic Loss 518.0776229858399 Avg Timestep :  200
-Episode :  80 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.05176480770111084 Critic Loss 455.6855531311035 Avg Timestep :  200
-Episode :  90 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.04757546901702881 Critic Loss 515.156781463623 Avg Timestep :  200
-```
+Episode :  10 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  0.024398097991943358 Critic Loss 559.8967700195312 Avg Timestep :  50
+Episode :  20 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.056886939441456515 Critic Loss 578.5426851160386 Avg Timestep :  17
+Episode :  30 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.16414203141864978 Critic Loss 565.4473218415912 Avg Timestep :  76
+Episode :  40 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  0.09517946736565952 Critic Loss 2224.6412879680765 Avg Timestep :  29
+Episode :  50 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.0010976457595825195 Critic Loss 621.600456237793 Avg Timestep :  200
+Episode :  60 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.026668670177459716 Critic Loss 620.4873565673828 Avg Timestep :  200
+Episode :  70 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.024512956142425536 Critic Loss 515.2374238586426 Avg Timestep :  200
+Episode :  80 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.024707696437835693 Critic Loss 480.76589309692383 Avg Timestep :  200
 
+```
+The convergence to 200 timesteps was found as early as 40th episode.
 ![Experience Replay Critic + Batch Update Actor](fig2.png)
 
 ### Testing

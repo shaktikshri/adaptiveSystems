@@ -13,7 +13,7 @@ from copy import deepcopy
 
 actor_learning_rate = 1e-2
 critic_learning_rate = 1e-2
-train_episodes = 100
+train_episodes = 500
 
 env = gym.make('CartPole-v0')
 actor = Actor(input_size=env.observation_space.shape[0], output_size=env.action_space.n, hidden_size=24)
