@@ -26,7 +26,7 @@ Episode :  80 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.02470
 
 ```
 The convergence to 200 timesteps was found as early as 40th episode.
-![Experience Replay Critic + Batch Update Actor](fig2.png)
+![Experience Replay Critic + Batch Update Actor](fig3.png)
 
 ### Testing
 ```
