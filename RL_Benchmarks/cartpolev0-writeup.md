@@ -21,7 +21,7 @@ Episode :  80 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.05176
 Episode :  90 actor lr :  [0.01] critic lr :  [0.01] Actor Objective :  -0.04757546901702881 Critic Loss 515.156781463623 Avg Timestep :  200
 ```
 
-![Experience Replay Critic + Batch Update Actor](RL_Benchmarks/fig2.png)
+![Experience Replay Critic + Batch Update Actor](fig2.png)
 
 ### Testing
 ```
