@@ -31,3 +31,4 @@ Episode : 3 : Total timesteps = 200, total reward = 200.0
 Episode : 4 : Total timesteps = 200, total reward = 200.0
 Episode : 5 : Total timesteps = 200, total reward = 200.0
 ```
+![Episode](episode.gif)
