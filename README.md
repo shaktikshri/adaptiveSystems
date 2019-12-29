@@ -36,8 +36,17 @@ This is the most recent code I am stuck on (among many other codes :P ). This sh
 
 Lately i realized that the function stabilization problem I was trying to handle couldnt be done without a continuos
 action space consideration. I therefore tried my hands on some continuous action space RL algorithms, which as you'd
-expect is just a slight variation of the DQN form. The file ```acla_with_approxq.py``` is an implementation of the Continuous Actor
-Critic Learning Algorithm (CACLA) proposed by Hasselt and Wiering in [Reinforcement Learning in Continuous Action Spaces](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf).
+expect is just a slight variation of the DQN form. The file ```acla_with_approxq.py``` is an implementation of the Actor
+Critic Learning Algorithm (ACLA). I tried out the following configurations, 
+1. Actor and Critic with experience replays \[This training was by far the slowest I ever saw. There was a progress of 180 episodes over 8hours on an AMD Ryzen Threadripper 2990WX 128 GB\]
+2. Combinations of fixing Q targets in Critic and Actor
+3. Using dropouts in Actor
+4. Combinations of stochastic/batch updates of critic/actor
+
+Out of all these, updating Critic with experience replay without target scaling and actor in batch along with target scaling gave the best performance.
+The environment was CartPole-v1. Timesteps of 500 were achieved within 100 episodes, a further learning rate decay for both actor and critic is expected to speed up this convergence.
+![Experience Replay Critic + Batch Update Actor](RL_Benchmarks/fig1.png)
+
 
 PS. I am working on this file right now so it can appear a bit messed up, please excuse me for it :)
 
