@@ -135,6 +135,11 @@ for episode_i in range(train_episodes):
         next_state, reward, done, info = env.step(action.item())
         next_state = torch.Tensor(next_state)
 
+        if done:
+            reward = -500
+        else:
+            reward = 20
+
         u_value = critic(cur_state)
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
@@ -147,14 +152,12 @@ for episode_i in range(train_episodes):
 
 
         # TODO : Checking if removing replay buffer and updating Q in batches improves anything
-        """
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
         sample_transitions = replay_buffer.sample_pytorch()
         # update the critic's q approximation using the sampled transitions
         running_loss1_mean += update_critic(**sample_transitions)
-        """
 
         # this section was for actor experience replay, which to my dismay performed much worse than without replay
         # actor_replay_buffer.add(target, u_value, -log_prob)
@@ -197,13 +200,13 @@ for episode_i in range(train_episodes):
 
 
     # TODO : Remove this if it doesnt improve the convergence
-    critic_optimizer.zero_grad()
-    u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
-    target_list_copy = (target_list - target_list.mean()) / target_list.std()
-    loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy)
-    loss1.backward(retain_graph=True)
-    running_loss1_mean += loss1.item()
-    critic_optimizer.step()
+    # critic_optimizer.zero_grad()
+    # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
+    # target_list_copy = (target_list - target_list.mean()) / target_list.std()
+    # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy)
+    # loss1.backward(retain_graph=True)
+    # running_loss1_mean += loss1.item()
+    # critic_optimizer.step()
 
 
     if optimizer_algo == 'batch':
