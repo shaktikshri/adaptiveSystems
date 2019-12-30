@@ -214,12 +214,13 @@ for episode_i in range(train_episodes):
     # running_loss1_mean += loss1.item()
     # critic_optimizer.step()
 
-
-    if optimizer_algo == 'batch':
-        # Update parameters of actor by policy gradient
-        actor_optimizer.zero_grad()
-        # compute the gradient from the sampled log probability
-        #  the log probability times the Q of the action that you just took in that state
+    # Do the loss backward only if there was at least 2 transitions in the episode with TD error > 0
+    if target_list.shape[0] >= 2:
+        if optimizer_algo == 'batch':
+            # Update parameters of actor by policy gradient
+            actor_optimizer.zero_grad()
+            # compute the gradient from the sampled log probability
+            #  the log probability times the Q of the action that you just took in that state
 
             """Important note"""
             # Reward scaling, this performs much better.
