@@ -1,5 +1,5 @@
 ### CartPole-v0
-
+This is the writeup referenced for [Leaderboard](https://github.com/openai/gym/wiki/Leaderboard#cartpole-v0) in solving cartpole-v0
 ### Script
 The code is available here [playing_cartpole.py](playing_cartpole.py)
 
