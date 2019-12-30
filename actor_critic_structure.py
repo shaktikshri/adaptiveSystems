@@ -128,6 +128,9 @@ class Actor(nn.Module):
             # TODO : This scale can be controlled, its the variance around the mean action
             m = Normal(loc=action, scale=torch.Tensor([0.1]))
             explored_action = m.sample()
+            # keep sampling new actions until it is within -1 to +1.
+            while not (explored_action <= +1 and explored_action >= -1):
+                explored_action = m.sample()
             # Note that the log prob should be at the original action, not at the exploration since the gradient used
             # will be the gradient of actor's prediction, not of actor's exploration
             return explored_action, m.log_prob(action)
