@@ -204,7 +204,6 @@ for episode_i in range(train_episodes):
         episode_timestep += 1
         cur_state = next_state
 
-
     # TODO : Remove this if it doesnt improve the convergence
     # critic_optimizer.zero_grad()
     # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
@@ -215,6 +214,7 @@ for episode_i in range(train_episodes):
     # critic_optimizer.step()
 
     # Do the loss backward only if there was at least 2 transitions in the episode with TD error > 0
+    # there wont be any elements in target_list, action_list of the episode has no TD error > 0
     if target_list.shape[0] >= 2:
         if optimizer_algo == 'batch':
             # Update parameters of actor by policy gradient
