@@ -83,7 +83,11 @@ class Actor(nn.Module):
         )
         if continuous:
             # if its continuous action space then done use a softmax at the last layer
-            self.output_layer = nn.Linear(hidden_size, output_size)
+            self.output_layer = nn.Sequential(
+                nn.Linear(hidden_size, output_size),
+                nn.Sigmoid() # sigmoid is needed to bring the output between 0 to 1, later in forward function we'll
+                # transform this to -1 to 1
+            )
         else:
             # else use a softmax
             self.output_layer = nn.Sequential(
@@ -97,6 +101,9 @@ class Actor(nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.output_layer(out)
+        # transform the output between -1 to 1 for continuous action spaces
+        if self.continuous:
+            out = 2*out - 1
         return out
 
     def select_action(self, current_state):
