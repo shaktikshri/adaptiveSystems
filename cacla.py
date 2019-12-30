@@ -55,7 +55,7 @@ train_episodes = 5000
 
 env = ContinuousCartPoleEnv()
 # The actor can just output an action, since the action space is continuous now
-actor = Actor(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24)
+actor = Actor(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24, continuous=True)
 
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24)

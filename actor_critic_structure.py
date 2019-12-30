@@ -65,7 +65,7 @@ class QCritic(nn.Module):
 
 
 class Actor(nn.Module):
-    def __init__(self, input_size, output_size, hidden_size=12):
+    def __init__(self, input_size, output_size, hidden_size=12, continuous=False):
         super(Actor, self).__init__()
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),
@@ -79,11 +79,16 @@ class Actor(nn.Module):
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU()
         )
-        self.output_layer = nn.Sequential(
-            nn.Linear(hidden_size, output_size),
-            # TODO : Try out log here if any numerical instability occurs
-            nn.Softmax(dim=-1)
-        )
+        if continuous:
+            # if its continuous action space then done use a softmax at the last layer
+            self.output_layer = nn.Linear(hidden_size, output_size)
+        else:
+            # else use a softmax
+            self.output_layer = nn.Sequential(
+                nn.Linear(hidden_size, output_size),
+                # TODO : Try out log here if any numerical instability occurs
+                nn.Softmax(dim=-1)
+            )
 
     def forward(self, x):
         out = self.layer1(x)
