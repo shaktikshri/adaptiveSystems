@@ -103,10 +103,7 @@ class Actor(nn.Module):
         """
         selects an action as per some decided exploration
         :param current_state: the current state
-        :return:
-        1. if action space is discrete -> the chosen action and the log probility of that chosen action
-        2. if action space is continuous -> the predicted action, the explored action and the
-        log probability of the predicted action to act as the gradient
+        :return: the chosen action and the log probility to act as the gradient
 
         """
         if not self.continuous:
@@ -124,4 +121,6 @@ class Actor(nn.Module):
             # TODO : This scale can be controlled, its the variance around the mean action
             m = Normal(loc=action, scale=torch.Tensor([0.1]))
             explored_action = m.sample()
-            return action, explored_action, m.log_prob(action)
+            # Note that the log prob should be at the original action, not at the exploration since the gradient used
+            # will be the gradient of actor's prediction, not of actor's exploration
+            return explored_action, m.log_prob(action)
