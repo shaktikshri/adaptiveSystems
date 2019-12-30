@@ -49,8 +49,8 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-2
-critic_learning_rate = 1e-2
+actor_learning_rate = 1e-5
+critic_learning_rate = 1e-4
 train_episodes = 5000
 
 env = ContinuousCartPoleEnv()
@@ -77,8 +77,8 @@ elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
-actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=0.1)
-critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=200, gamma=0.1)
+critic_scheduler = StepLR(critic_optimizer, step_size=200, gamma=0.1)
 
 
 gamma = 0.99
@@ -93,6 +93,9 @@ loss2_history = []
 # initialize policy and replay buffer
 replay_buffer = ReplayBuffer()
 actor_replay_buffer = ActorReplayBuffer()
+
+beta = 0.001  # beta is the momentum in variance updates of TD Error
+running_variance = 1
 
 
 # In[]:
@@ -138,6 +141,7 @@ for episode_i in range(train_episodes):
         next_state, reward, done, info = env.step(action.numpy())
         next_state = torch.Tensor(next_state)
 
+        # TODO : THe reward structure can be changed
         if done:
             reward = -100
         else:
@@ -184,16 +188,22 @@ for episode_i in range(train_episodes):
             # then only update the actor, see
             if optimizer_algo == 'sgd':
                 # Update parameters of actor by policy gradient
-                actor_optimizer.zero_grad()
                 # compute the gradient from the sampled log probability
                 #  the log probability times the Q of the action that you just took in that state
                 # TODO : the target here is still a moving target, see if fixing this for sometime leads to any improvement
 
                 # TODO : The updates should be of size proportional to the variance reduction
-                loss2 = -log_prob * (action - actor(cur_state))
-                loss2.backward()
+                td_error = target - u_value
+                running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
+                # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
+                # original paper in Hasselt and Wiering
+                for el in range(int(torch.ceil(td_error / torch.sqrt(running_variance)))):
+                    actor_optimizer.zero_grad()
+                    loss2 = -log_prob * (action - actor(cur_state))
+                    loss2.backward()
+                    actor_optimizer.step()
+
                 running_loss2_mean += loss2.item()
-                actor_optimizer.step()
 
             elif optimizer_algo == 'batch':
                 target_list = torch.cat([target_list, action])
@@ -233,6 +243,7 @@ for episode_i in range(train_episodes):
             # TODO : Normalization was posing a numerical instability problem here, the loss would
             # become too small– of the order of e-8, e-9
             # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
+            # TODO : The updates should be of size proportional to the variance reduction
             loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
 
             loss2.backward()
@@ -283,37 +294,20 @@ plt.show()
 
 # In[]:
 
+env = ContinuousCartPoleEnv()
 # from gym import wrappers
-env = gym.make('CartPole-v1')
 # env = wrappers.Monitor(env, 'episode_shakti')
+import time
 cur_state = env.reset()
 total_step = 0
 total_reward = 0.0
 done = False
 while not done:
     action, probs = actor.select_action(torch.Tensor(cur_state))
-    next_state, reward, done, info = env.step(action.item())
+    next_state, reward, done, info = env.step(action.numpy())
     total_reward += reward
-    env.render(mode='rgb_array')
+    env.render(mode='human')
     total_step += 1
     cur_state = next_state
 print("Total timesteps = {}, total reward = {}".format(total_step, total_reward))
-
 env.close()
-
-# In[]:
-from cartpoleContinuous import ContinuousCartPoleEnv
-import time
-for el in range(10):
-    env.reset()
-    done = False
-    while not done:
-        action = env.action_space.sample()
-        next_state, reward, done, _ = env.step(action)
-        total_reward += reward
-        env.render(mode='human')
-        total_step += 1
-        cur_state = next_state
-    print("Total timesteps = {}, total reward = {}".format(total_step, total_reward))
-    env.close()
-    time.sleep(2)
