@@ -135,7 +135,7 @@ for episode_i in range(train_episodes):
         action, log_prob = actor.select_action(cur_state)
 
         # take action in the environment
-        next_state, reward, done, info = env.step(action.item())
+        next_state, reward, done, info = env.step(action.numpy())
         next_state = torch.Tensor(next_state)
 
         if done:
@@ -221,19 +221,22 @@ for episode_i in range(train_episodes):
         # compute the gradient from the sampled log probability
         #  the log probability times the Q of the action that you just took in that state
 
-        """Important note"""
-        # Reward scaling, this performs much better.
-        # In the general case this might not be a good idea. If there are rare events with extremely high rewards
-        # that only occur in some episodes, and the majority of episodes only experience common events with
-        # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
-        # since all the rewards are 1 itself
-        multiplication_factor = target_list - actors_output_list
-        multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
-        loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
+            """Important note"""
+            # Reward scaling, this performs much better.
+            # In the general case this might not be a good idea. If there are rare events with extremely high rewards
+            # that only occur in some episodes, and the majority of episodes only experience common events with
+            # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
+            # since all the rewards are 1 itself
+            # TODO :  Doing the gradient descent on the L1 norm error, check if L2 norm or any other form has to be used here
+            multiplication_factor = target_list - actors_output_list
+            # TODO : Normalization was posing a numerical instability problem here, the loss would
+            # become too small– of the order of e-8, e-9
+            # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
+            loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
 
-        loss2.backward()
-        running_loss2_mean += loss2.item()
-        actor_optimizer.step()
+            loss2.backward()
+            running_loss2_mean += loss2.item()
+            actor_optimizer.step()
 
     loss1_history.append(running_loss1_mean/episode_timestep)
     loss2_history.append(running_loss2_mean/episode_timestep)
