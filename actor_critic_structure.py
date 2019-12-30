@@ -1,8 +1,9 @@
 import torch.nn as nn
 import torch.optim as optim
 import gym
+import torch
 from dqn import ReplayBuffer
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Normal
 from torch.nn.functional import mse_loss
 import numpy as np
 from torch.optim.lr_scheduler import StepLR
@@ -67,6 +68,7 @@ class QCritic(nn.Module):
 class Actor(nn.Module):
     def __init__(self, input_size, output_size, hidden_size=12, continuous=False):
         super(Actor, self).__init__()
+        self.continuous = continuous
         self.layer1 = nn.Sequential(
             nn.Linear(input_size, hidden_size),
             nn.ReLU()
@@ -101,11 +103,25 @@ class Actor(nn.Module):
         """
         selects an action as per some decided exploration
         :param current_state: the current state
-        :return: the chosen action and the log probility of that chosen action
+        :return:
+        1. if action space is discrete -> the chosen action and the log probility of that chosen action
+        2. if action space is continuous -> the predicted action, the explored action and the
+        log probability of the predicted action to act as the gradient
+
         """
-        probs = self(current_state)
-        # No gaussian exploration can be performed since the actions are discrete and not continuous
-        # gaussian would make sense and feasibility only when actions are continuous
-        m = Categorical(probs)
-        action = m.sample()
-        return action, m.log_prob(action)
+        if not self.continuous:
+            # if its not continuous action space then use epsilon greedy selection
+            probs = self(current_state) # probs is the probability of each of the discrete actions possible
+            # No gaussian exploration can be performed since the actions are discrete and not continuous
+            # gaussian would make sense and feasibility only when actions are continuous
+            m = Categorical(probs)
+            action = m.sample()
+            return action, m.log_prob(action)
+        else:
+            # use gaussian or other form of exploration in continuous action space
+            action = self(current_state) # action is the action predicted for this current_state
+            # now time to explore, so sample from a gaussian distribution centered at action
+            # TODO : This scale can be controlled, its the variance around the mean action
+            m = Normal(loc=action, scale=torch.Tensor([0.1]))
+            explored_action = m.sample()
+            return action, explored_action, m.log_prob(action)
