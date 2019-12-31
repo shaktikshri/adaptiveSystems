@@ -49,8 +49,8 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-8
-critic_learning_rate = 1e-8
+actor_learning_rate = 1e-2
+critic_learning_rate = 1e-2
 train_episodes = 5000
 
 env = ContinuousCartPoleEnv()
@@ -65,7 +65,7 @@ critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden
 critic_old = deepcopy(critic)
 copy_epoch = 100
 
-optimizer_algo = 'sgd'
+optimizer_algo = 'batch'
 
 # Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
