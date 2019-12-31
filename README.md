@@ -39,7 +39,7 @@ The stochastic parameter updates were best with an SGD with learning rate schedu
 However, a full batch gradient descent beat the sgd by a large margin and converged within 500 episodes for cartpole v1.
 
 ```cacla.py```
-<br>So finally I was able to write the Continuous Actor [Critic Learning Algorithm](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf). I benchmarked this against cartpole continuous environment.
+<br>So finally I was able to write the [Continuous Actor Critic Learning Algorithm](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf). I benchmarked this against cartpole continuous environment.
 The training started pretty low on enthusiasm, but to my surprise the algorithm hit 1189 timesteps in the 420th episode!
 I used ![](RL_Benchmarks/updates.gif) number of updates towards an action where variance<sub>t</sub> is the running variance of the TD(0) error and &delta;<sub>t</sub> is the TD(0) error at time t.
 A gaussian exploration was used. The Actor was trained in a full batch mode, the Critic used an experience replay with fixed targets updated every copy_epochs episodes.
