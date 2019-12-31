@@ -301,7 +301,7 @@ cur_state = env.reset()
 total_step = 0
 total_reward = 0.0
 done = False
-while not done:
+for el in range(1000):
     action, probs = actor.select_action(torch.Tensor(cur_state))
     next_state, reward, done, info = env.step(action.numpy())
     total_reward += reward

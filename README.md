@@ -11,6 +11,8 @@ This file gives a template for constructing a Deep Q Learning network. You can s
 ```IRL/irl_finite_space.py```
 
 This file implements the Finite Space IRL as put forth in Andrew Ng and Stuart Russel in [Algorithms for Inverse Reinforcement Learning](https://ai.stanford.edu/~ang/papers/icml00-irl.pdf). I used pulp based linear program solver but many people prefer using cvxopt package as well.
+For a sample reward structure the following result was obtained,
+![IRL in Finite Space](RL_Benchmarks/fig2.png)
 
 ```dqn_sin_stability.py```
 
