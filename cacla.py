@@ -131,7 +131,6 @@ for episode_i in range(train_episodes):
     done = False
     cur_state = torch.Tensor(env.reset())
 
-    log_prob_list = torch.Tensor()
     actors_output_list = torch.Tensor()
     action_target_list = torch.Tensor()
     u_value_list = torch.Tensor()
@@ -191,13 +190,10 @@ for episode_i in range(train_episodes):
         if target - u_value > 0:
             # then only update the actor, see
             if optimizer_algo == 'sgd':
-                # Update parameters of actor by policy gradient
-                # compute the gradient from the sampled log probability
-                #  the log probability times the Q of the action that you just took in that state
+                # Update parameters of actor by ACLA
                 # TODO : the target here is still a moving target, see if fixing this for sometime leads to any improvement
-
                 # TODO : The updates should be of size proportional to the variance reduction
-                td_error = (target - u_value).detach()
+                td_error = target - u_value
                 # TODO : Instead of runing a loop here, multiply this with the loss2 there while updating
                 running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
                 # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
