@@ -45,9 +45,6 @@ class ActorReplayBuffer:
         return sample_objectives
 
 # In[]:
-# TODO :
-#  1. Use dropouts
-#  2. fix targets in critic, should this be done for actor as well?
 
 actor_learning_rate = 1e-2
 critic_learning_rate = 1e-2
@@ -60,7 +57,6 @@ actor = Actor(input_size=env.observation_space.shape[0], output_size=1, hidden_s
 # Approximating the Value function
 critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24)
 
-# TODO : Check this performance
 # critic_old is used for fixing the target in learning the V function
 critic_old = deepcopy(critic)
 copy_epoch = 100
@@ -145,7 +141,11 @@ for episode_i in range(train_episodes):
 
         # TODO : The reward structure can be changed
         if done:
-            reward = -100
+            reward = -50
+        elif episode_timestep > 100:
+            reward = reward*10
+        elif episode_timestep > 200:
+            reward = reward * 20
 
         u_value = critic(cur_state)
         u_value_list = torch.cat([u_value_list, u_value])
@@ -153,14 +153,12 @@ for episode_i in range(train_episodes):
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
 
-        # TODO : Uncomment this line if 1-done is a wrong concept in actor
         # target = reward + gamma * critic(next_state)
         # Using 1-done even in the target for actor since the next state wont have any meaning when done=1
         # TODO : Remove this line if 1-done is a wrong concept in actor
         target = reward + gamma * (1-done) * critic_old(next_state)
         target_list = torch.cat([target_list, target])
 
-        # TODO : Checking if removing replay buffer and updating Q in batches improves anything
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
