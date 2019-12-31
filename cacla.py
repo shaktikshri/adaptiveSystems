@@ -49,8 +49,8 @@ class ActorReplayBuffer:
 #  1. Use dropouts
 #  2. fix targets in critic, should this be done for actor as well?
 
-actor_learning_rate = 1e-5
-critic_learning_rate = 1e-6
+actor_learning_rate = 1e-8
+critic_learning_rate = 1e-8
 train_episodes = 5000
 
 env = ContinuousCartPoleEnv()
@@ -81,7 +81,7 @@ actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=1)
 critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
 
 
-gamma = 0.90
+gamma = 0.99
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
 agg_interval = 10
 avg_reward = 0.0
@@ -101,16 +101,16 @@ running_variance = 1
 # In[]:
 
 
-def update_critic(cur_states, actions, next_states, rewards, dones):
+def update_critic(critic_old, cur_states, actions, next_states, rewards, dones):
 
     # target doesnt change when its terminal, thus multiply with (1-done)
-    targets = rewards + torch.mul(1 - dones, gamma*critic(next_states).squeeze(-1) )
+    targets = rewards + torch.mul(1 - dones, gamma*critic_old(next_states).squeeze(-1) )
     # expanded_targets are the Q values of all the actions for the current_states sampled
     # from the previous experience. These are the predictions
     expanded_targets = critic(cur_states).squeeze(-1)
     critic_optimizer.zero_grad()
     # detach the targets from the computation graph
-    loss1 = mse_loss(input=expanded_targets, target=targets.detach())
+    loss1 = mse_loss(input=targets.detach(), target=expanded_targets)  # the implementation is (input-target)^2
     loss1.backward()
     critic_optimizer.step()
     return loss1.item()
@@ -138,13 +138,13 @@ for episode_i in range(train_episodes):
     target_list = torch.Tensor()
 
     while not done:
-        action, log_prob = actor.select_action(cur_state)
+        action, _ = actor.select_action(cur_state)
 
         # take action in the environment
         next_state, reward, done, info = env.step(action.numpy())
         next_state = torch.Tensor(next_state)
 
-        # TODO : THe reward structure can be changed
+        # TODO : The reward structure can be changed
         if done:
             reward = -100
 
@@ -158,15 +158,16 @@ for episode_i in range(train_episodes):
         # target = reward + gamma * critic(next_state)
         # Using 1-done even in the target for actor since the next state wont have any meaning when done=1
         # TODO : Remove this line if 1-done is a wrong concept in actor
-        target = reward + gamma * (1-done) * critic(next_state)
+        target = reward + gamma * (1-done) * critic_old(next_state)
+        target_list = torch.cat([target_list, target])
 
         # TODO : Checking if removing replay buffer and updating Q in batches improves anything
         replay_buffer.add(cur_state, action, next_state, reward, done)
         # sample minibatch of transitions from the replay buffer
         # the sampling is done every timestep and not every episode
-        sample_transitions = replay_buffer.sample_pytorch()
+        sample_transitions = replay_buffer.sample_pytorch(sample_size=32)
         # update the critic's q approximation using the sampled transitions
-        running_loss1_mean += update_critic(**sample_transitions)
+        running_loss1_mean += update_critic(critic_old, **sample_transitions)
 
         # this section was for actor experience replay, which to my dismay performed much worse than without replay
         # actor_replay_buffer.add(target, u_value, -log_prob)
@@ -197,34 +198,33 @@ for episode_i in range(train_episodes):
 
                 # TODO : The updates should be of size proportional to the variance reduction
                 td_error = (target - u_value).detach()
+                # TODO : Instead of runing a loop here, multiply this with the loss2 there while updating
                 running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
                 # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
                 # original paper in Hasselt and Wiering
                 for el in range(int(torch.ceil(td_error / torch.sqrt(running_variance)))):
                     actor_optimizer.zero_grad()
-
-                    # TODO : remove -1 here and check, the gradient of this will automatically have a -1
-                    loss2 = -log_prob.detach() * (action.detach() - actor(cur_state))
-                    loss2.backward(retain_graph=True)
+                    loss2 = mse_loss(input=action.detach(), target=actor(cur_state)) # the implementation for mse
+                    # is (input - target)^2
+                    loss2.backward()
                     actor_optimizer.step()
-
-                running_loss2_mean += loss2.item()
+                    running_loss2_mean += loss2.item()
 
             elif optimizer_algo == 'batch':
                 action_target_list = torch.cat([action_target_list, action])
                 actors_output_list = torch.cat([actors_output_list, actor(cur_state)])
-                log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
+                # log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
 
         episode_reward += reward
         episode_timestep += 1
         cur_state = next_state
 
-    # # TODO : Remove this if it doesnt improve the convergence
+    # # # TODO : Remove this if it doesnt improve the convergence
     # critic_optimizer.zero_grad()
-    # # TODO : Check if removing scaling improves anything
+    # # # TODO : Check if removing scaling improves anything
     # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
     # target_list_copy = (target_list - target_list.mean()) / target_list.std()
-    # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy)
+    # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy.detach())
     # loss1.backward(retain_graph=True)
     # running_loss1_mean += loss1.item()
     # critic_optimizer.step()
@@ -250,8 +250,7 @@ for episode_i in range(train_episodes):
             # become too small– of the order of e-8, e-9
             # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
             # TODO : The updates should be of size proportional to the variance reduction
-            loss2 = torch.sum(torch.mul(-log_prob_list.detach(), multiplication_factor))  # the advantage function used is the TD error
-
+            loss2 = mse_loss(input=action_target_list, target=actors_output_list)
             loss2.backward()
             running_loss2_mean += loss2.item()
             actor_optimizer.step()
