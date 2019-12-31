@@ -50,7 +50,7 @@ class ActorReplayBuffer:
 #  2. fix targets in critic, should this be done for actor as well?
 
 actor_learning_rate = 1e-5
-critic_learning_rate = 1e-4
+critic_learning_rate = 1e-6
 train_episodes = 5000
 
 env = ContinuousCartPoleEnv()
@@ -65,7 +65,7 @@ critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden
 critic_old = deepcopy(critic)
 copy_epoch = 100
 
-optimizer_algo = 'batch'
+optimizer_algo = 'sgd'
 
 # Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
@@ -77,11 +77,11 @@ elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
 # gamma = decaying factor
-actor_scheduler = StepLR(actor_optimizer, step_size=200, gamma=0.1)
-critic_scheduler = StepLR(critic_optimizer, step_size=200, gamma=0.1)
+actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=1)
+critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
 
 
-gamma = 0.99
+gamma = 0.90
 avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
 agg_interval = 10
 avg_reward = 0.0
@@ -109,7 +109,8 @@ def update_critic(cur_states, actions, next_states, rewards, dones):
     # from the previous experience. These are the predictions
     expanded_targets = critic(cur_states).squeeze(-1)
     critic_optimizer.zero_grad()
-    loss1 = mse_loss(input=expanded_targets, target=targets)
+    # detach the targets from the computation graph
+    loss1 = mse_loss(input=expanded_targets, target=targets.detach())
     loss1.backward()
     critic_optimizer.step()
     return loss1.item()
@@ -132,6 +133,8 @@ for episode_i in range(train_episodes):
 
     log_prob_list = torch.Tensor()
     actors_output_list = torch.Tensor()
+    action_target_list = torch.Tensor()
+    u_value_list = torch.Tensor()
     target_list = torch.Tensor()
 
     while not done:
@@ -144,10 +147,10 @@ for episode_i in range(train_episodes):
         # TODO : THe reward structure can be changed
         if done:
             reward = -100
-        else:
-            reward = 5
 
         u_value = critic(cur_state)
+        u_value_list = torch.cat([u_value_list, u_value])
+
         # Update parameters of critic by TD(0)
         # TODO : Use TD Lambda here and compare the performance
 
@@ -193,20 +196,22 @@ for episode_i in range(train_episodes):
                 # TODO : the target here is still a moving target, see if fixing this for sometime leads to any improvement
 
                 # TODO : The updates should be of size proportional to the variance reduction
-                td_error = target - u_value
+                td_error = (target - u_value).detach()
                 running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
                 # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
                 # original paper in Hasselt and Wiering
                 for el in range(int(torch.ceil(td_error / torch.sqrt(running_variance)))):
                     actor_optimizer.zero_grad()
-                    loss2 = -log_prob * (action - actor(cur_state))
-                    loss2.backward()
+
+                    # TODO : remove -1 here and check, the gradient of this will automatically have a -1
+                    loss2 = -log_prob.detach() * (action.detach() - actor(cur_state))
+                    loss2.backward(retain_graph=True)
                     actor_optimizer.step()
 
                 running_loss2_mean += loss2.item()
 
             elif optimizer_algo == 'batch':
-                target_list = torch.cat([target_list, action])
+                action_target_list = torch.cat([action_target_list, action])
                 actors_output_list = torch.cat([actors_output_list, actor(cur_state)])
                 log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
 
@@ -214,8 +219,9 @@ for episode_i in range(train_episodes):
         episode_timestep += 1
         cur_state = next_state
 
-    # TODO : Remove this if it doesnt improve the convergence
+    # # TODO : Remove this if it doesnt improve the convergence
     # critic_optimizer.zero_grad()
+    # # TODO : Check if removing scaling improves anything
     # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
     # target_list_copy = (target_list - target_list.mean()) / target_list.std()
     # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy)
@@ -224,8 +230,8 @@ for episode_i in range(train_episodes):
     # critic_optimizer.step()
 
     # Do the loss backward only if there was at least 2 transitions in the episode with TD error > 0
-    # there wont be any elements in target_list, action_list of the episode has no TD error > 0
-    if target_list.shape[0] >= 2:
+    # there wont be any elements in action_target_list, action_list of the episode has no TD error > 0
+    if action_target_list.shape[0] >= 2:
         if optimizer_algo == 'batch':
             # Update parameters of actor by policy gradient
             actor_optimizer.zero_grad()
@@ -239,12 +245,12 @@ for episode_i in range(train_episodes):
             # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
             # since all the rewards are 1 itself
             # TODO :  Doing the gradient descent on the L1 norm error, check if L2 norm or any other form has to be used here
-            multiplication_factor = target_list - actors_output_list
+            multiplication_factor = action_target_list.detach() - actors_output_list
             # TODO : Normalization was posing a numerical instability problem here, the loss would
             # become too small– of the order of e-8, e-9
             # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
             # TODO : The updates should be of size proportional to the variance reduction
-            loss2 = torch.sum(torch.mul(-log_prob_list, multiplication_factor))  # the advantage function used is the TD error
+            loss2 = torch.sum(torch.mul(-log_prob_list.detach(), multiplication_factor))  # the advantage function used is the TD error
 
             loss2.backward()
             running_loss2_mean += loss2.item()
