@@ -47,11 +47,6 @@ The environment was CartPole-v1. Timesteps of 500 were achieved within 100 episo
 ![Experience Replay Critic + Batch Update Actor](RL_Benchmarks/fig1.png)
 The actor still has a high variance even though I used a one step TD error as the advantage. However this variance seems to die off once the convergence is achieved, something I'm still trying to explain to myself.
 
-PS. I am working on this file right now so it can appear a bit messed up, please excuse me for it :)
-
-
-As always, if you'd like to know more about this research feel free to drop me an email.
-
 ```acla_with_mc_returns.py```
 
 This file performs an actor critic learning algorithm with monte carlo estimates of the returns.
@@ -59,3 +54,13 @@ Several experiments were performed and were found consistent with stochastic beh
 The stochastic parameter updates were best with an SGD with learning rate scheduling and nesterov accelerated gradient.
 However, a full batch gradient descent beat the sgd by a large margin and converged within 500 episodes for cartpole v1.
 
+```cacla.py```
+<br>So finally I was able to write the Continuous Actor [Critic Learning Algorithm](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.75.7658&rep=rep1&type=pdf). I benchmarked this against cartpole continuous environment.
+The training started pretty low on enthusiasm, but to my surprise the algorithm hit 1189 timesteps in the 420th episode!
+I used ![](RL_Benchmarks/updates.gif) number of updates towards an action where variance<sub>t</sub> is the running variance of the TD(0) error and &delta;<sub>t</sub> is the TD(0) error at time t.
+A gaussian exploration was used. The Actor was trained in a full batch mode, the Critic used an experience replay with fixed targets updated every copy_epochs episodes.
+![CACLA](RL_Benchmarks/fig4.png)
+It is worth appreciating the reduction in Actor's variance over time and the corresponding increase in the timesteps.
+
+<br>
+As always, if you'd like to know more about this research feel free to drop me an email.
