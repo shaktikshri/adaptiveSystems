@@ -12,6 +12,8 @@ class RandomVariable:
         self.time = 0
         self.timestep = 0.1
         self.cur_state = self.f(self.time) # the function is currently in one dimension, we can raise this dimension
+        self.observation_space = np.array(1).reshape(-1)
+        self.action_space = np.array(1).reshape(-1)
 
     def get_noise(self):
         # TODO: Replace this with a gaussian, np.random.normal(0, 0.1)

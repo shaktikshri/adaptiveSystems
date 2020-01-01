@@ -1,185 +1,287 @@
+import torch
+import torch.optim as optim
+from dqn import ReplayBuffer
+from torch.distributions import Categorical
+from torch.nn.functional import mse_loss
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('Qt5Agg')
+from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from actor_critic_structure import Actor, Critic
+from copy import deepcopy
 from env_definition import RandomVariable
-from util import *
-import time
 
 # In[]:
 
-NUM_STATES = 5
-NUM_ACTIONS = 10
-N_EPOCHS = 50000
+class ActorReplayBuffer:
+    def __init__(self, max_size=2000):
+        self.max_size = max_size
+        self.target = []
+        self.predicted = []
+        self.gradient = []
+
+    def __len__(self):
+        return len(self.target)
+
+    def add(self, target, predicted, gradient):
+        self.target.append(target)
+        self.predicted.append(predicted)
+        self.gradient.append(gradient)
+
+    def sample(self, sample_size=32):
+        sample_objectives = {}
+        if self.__len__() >= sample_size:
+            # pick up only random 32 events from the memory
+            indices = np.random.choice(self.__len__(), size=sample_size)
+            sample_objectives['target'] = torch.stack(self.target)[indices].squeeze(-1)
+            sample_objectives['predicted'] = torch.stack(self.predicted)[indices].squeeze(-1)
+            sample_objectives['gradient'] = torch.stack(self.gradient)[indices].squeeze(-1)
+        else:
+            # if the current buffer size is not greater than 32 then pick up the entire memory
+            sample_objectives['target'] = torch.stack(self.target).squeeze(-1)
+            sample_objectives['predicted'] = torch.stack(self.predicted).squeeze(-1)
+            sample_objectives['gradient'] = torch.stack(self.gradient).squeeze(-1)
+
+        return sample_objectives
+
+# In[]:
+
+actor_learning_rate = 1e-2
+critic_learning_rate = 1e-2
+train_episodes = 5000
 
 env = RandomVariable()
+# The actor can just output an action, since the action space is continuous now
+actor = Actor(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24, continuous=True)
 
-# Define the state matrix, there are 5 possible states,
-# 2 states on the right side of origin
-# 2 states on the left side of origin
-# 1 state around the origin
-# Thus state 0 is – metric between normal_value - (-inf, -0.1)
-# Thus state 1 is – metric between normal_value - [-0.1, -0.01)
-# Thus state 2 is – metric between [normal_value - 0.01] to [normal_value + 0.01]
-# Thus state 3 is – metric between normal_value + (0.01, +0.1]
-# Thus state 4 is – metric between normal_value + (+0.1, +inf)
-state_matrix = np.zeros((NUM_STATES, 1))
-state_matrix[0] = state_matrix[-1] = 1 # These are the incident state, which is again a terminal state
-# We dont need the state matrix since the state depends purely on the value of the metric
-# state matrix is depicted only for your understanding
+# Approximating the Value function
+critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24)
 
-# There are 10 possible actions
-# Each of them given a value to be added into the current value of the function which
-# it aims to stabilize. These values are from uniform log scale between -0.5 to +0.5
-action_matrix = np.linspace(start=-1, stop=1, num=NUM_ACTIONS)
-env.set_action_to_value_mapping(action_matrix)
+# critic_old is used for fixing the target in learning the V function
+critic_old = deepcopy(critic)
+copy_epoch = 100
 
-# We dont need to define the transition matrix as this is a model free Q learning via TD(0) updates. LOL why didnt
-# I understand this earlier?
-# define the reward matrix as per the states,
-# State 0 and 6 are incident -> reward -1
-# State 1 and 5 are critical -> reward -0.5
-# State 2 and 4 are unsafe -> reward -0.1
-reward_matrix = np.array([
-    -10, -0.04, +1, -0.04, -10
-])
-env.set_reward_matrix(reward_matrix)
+optimizer_algo = 'batch'
 
-# We dont need the policy matrix as of now, we'll do a Q learning first
-# Random policy matrix
-# policy_matrix = np.random.randint(low=0, high=NUM_ACTIONS, size=(NUM_STATES,))
-# policy_matrix[0] = policy_matrix[-1] = -1 # these are the terminal states
+# Critic is always optimized in batch
+critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
 
-# State-action matrix or the Q values (init to zeros or to random values)
-Q = np.random.random_sample((NUM_STATES, NUM_ACTIONS))
-Q_new = np.random.random_sample((NUM_STATES, NUM_ACTIONS))
-all_episode_lists = list()
+# actor is optimized either in batch or sgd
+if optimizer_algo == 'sgd':
+    actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
+elif optimizer_algo == 'batch':
+    actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
-# starting with Q learning now.
-timestep = 0.1
-epsilon = 0.1
-alpha = 0.1
-gamma = 0.1
-print_episode = 10
-difference = 10
-very_small = 1e-5
-TRAIN_EPISODES = 100
-MAX_EPISODE_LENGTH = 1000
-list_of_actions = list()
+# gamma = decaying factor
+actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=1)
+critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
 
-master_difference_list = list()
 
-for episode in range(TRAIN_EPISODES):
+gamma = 0.99
+avg_history = {'episodes': [], 'timesteps':[], 'reward': []}
+agg_interval = 10
+running_loss1_mean = 0
+running_loss2_mean = 0
+loss1_history = []
+loss2_history = []
+# initialize policy and replay buffer
+replay_buffer = ReplayBuffer()
+actor_replay_buffer = ActorReplayBuffer()
+
+beta = 0.001  # beta is the momentum in variance updates of TD Error
+running_variance = 1
+
+
+# In[]:
+
+
+def update_critic(critic_old, cur_states, actions, next_states, rewards, dones):
+
+    # target doesnt change when its terminal, thus multiply with (1-done)
+    targets = rewards + torch.mul(1 - dones, gamma*critic_old(next_states).squeeze(-1) )
+    # expanded_targets are the Q values of all the actions for the current_states sampled
+    # from the previous experience. These are the predictions
+    expanded_targets = critic(cur_states).squeeze(-1)
+    critic_optimizer.zero_grad()
+    # detach the targets from the computation graph
+    loss1 = mse_loss(input=targets.detach(), target=expanded_targets)  # the implementation is (input-target)^2
+    loss1.backward()
+    critic_optimizer.step()
+    return loss1.item()
+
+
+# In[]:
+
+# Train the network to predict actions for each of the states
+for episode_i in range(train_episodes):
+
+    # make a copy every copy_epoch epochs
+    if episode_i % copy_epoch == 0:
+        critic_old = deepcopy(critic)
+
+    episode_reward = 0.0
+    episode_timestep = 0
+
     done = False
-    time = 0
-    state, function_value = env.reset(exploring_starts=True)
-    this_episode = list()
-    count = 0
-    # this list will help us see how the difference in the actual function value and the addition is changing over time
-    difference_list = list()
-    while count<MAX_EPISODE_LENGTH and not done: # cutoff the max length of an episode to 100
-        count += 1
-        # draw actions as per epsilon greedy
-        choice = np.random.choice(2, p=[epsilon, 1-epsilon])
-        if choice == 0:
-            # take random action
-            action = np.random.choice(len(action_matrix))
-        else:
-            action = np.argmax(Q[env.state])
-        list_of_actions.append(env.action_to_value_mapping[action])
-        new_state, new_function_value, reward, done, diff_of_function_values = env.step(action, time)
-        this_episode.append([new_function_value, action, state])
+    cur_state = torch.Tensor([env.reset()])
 
-        # this list will help us see how the difference in the actual function value and the
-        # addition is changing over time
-        difference_list.append(diff_of_function_values)
-        if done:
-            flag = 1
-            break
-        Q_new[state, action] = Q[state, action] + alpha * (
-                reward + gamma*np.max(Q[new_state]) - Q[state, action]
-        )
-        state = new_state
-        difference = np.sum(np.absolute(Q_new - Q))
-        Q = np.copy(Q_new)
-        time += timestep
-    all_episode_lists.append(this_episode)
-    master_difference_list.append(difference_list)
-    if episode % print_episode:
-        print('Max difference in Q : ', difference)
-        print('Episode : ', episode)
+    actors_output_list = torch.Tensor()
+    action_target_list = torch.Tensor()
+    u_value_list = torch.Tensor()
+    target_list = torch.Tensor()
 
-mean_diff = list()
-for each_episode in master_difference_list:
-    mean_diff.append(np.sum(each_episode)/len(each_episode))
-plt.figure('mean diff1')
-plt.plot(mean_diff)
-plt.legend('gamma = '+str(gamma))
+    while not done:
+        action, _ = actor.select_action(cur_state)
+
+        # take action in the environment
+        next_state, reward, done, info = env.step(action.item())
+        next_state = torch.Tensor([next_state])
+
+        u_value = critic(cur_state)
+        u_value_list = torch.cat([u_value_list, u_value])
+
+        # Update parameters of critic by TD(0)
+        # TODO : Use TD Lambda here and compare the performance
+
+        target = reward + gamma * (1-done) * critic_old(next_state)
+        target_list = torch.cat([target_list, target])
+
+        replay_buffer.add(cur_state, action, next_state, reward, done)
+        sample_transitions = replay_buffer.sample_pytorch(sample_size=32)
+        # update the critic's q approximation using the sampled transitions
+        running_loss1_mean += update_critic(critic_old, **sample_transitions)
+
+        # this section was for actor experience replay, which to my dismay performed much worse than without replay
+        # actor_replay_buffer.add(target, u_value, -log_prob)
+        # sample_objectives = actor_replay_buffer.sample(sample_size=32)
+        # actor_optimizer.zero_grad()
+        # # compute the gradient from the sampled log probability
+        # #  the log probability times the Q of the action that you just took in that state
+        # """Important note"""
+        # # Reward scaling, this performs much better.
+        # # In the general case this might not be a good idea. If there are rare events with extremely high rewards
+        # # that only occur in some episodes, and the majority of episodes only experience common events with
+        # # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
+        # # since all the rewards are 1 itself
+        # multiplication_factor = sample_objectives['target'] - sample_objectives['predicted']
+        # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / ( multiplication_factor.std(unbiased=False) + 1e-8)
+        # loss2 = torch.sum(torch.mul(sample_objectives['gradient'], multiplication_factor))  # the advantage function used is the TD error
+        # loss2.backward(retain_graph=True)
+        # running_loss2_mean += loss2.item()
+        # actor_optimizer.step()
+
+        if target - u_value > 0:
+            if optimizer_algo == 'sgd':
+                # Update parameters of actor by ACLA
+                td_error = target - u_value
+                # TODO : Instead of runing a loop here, multiply this with the loss2 there while updating
+                running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
+                # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
+                # original paper in Hasselt and Wiering
+                for el in range(int(torch.ceil(td_error / torch.sqrt(running_variance)))):
+                    actor_optimizer.zero_grad()
+                    loss2 = mse_loss(input=action.detach(), target=actor(cur_state)) # the implementation for mse
+                    # is (input - target)^2
+                    loss2.backward()
+                    actor_optimizer.step()
+                    running_loss2_mean += loss2.item()
+
+            elif optimizer_algo == 'batch':
+                action_target_list = torch.cat([action_target_list, action])
+                actors_output_list = torch.cat([actors_output_list, actor(cur_state)])
+                # log_prob_list = torch.cat([log_prob_list, log_prob.reshape(-1)])
+
+        episode_reward += reward
+        episode_timestep += 1
+        cur_state = next_state
+
+    # # # TODO : Remove this if it doesnt improve the convergence
+    # critic_optimizer.zero_grad()
+    # # # TODO : Check if removing scaling improves anything
+    # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
+    # target_list_copy = (target_list - target_list.mean()) / target_list.std()
+    # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy.detach())
+    # loss1.backward(retain_graph=True)
+    # running_loss1_mean += loss1.item()
+    # critic_optimizer.step()
+
+    # Do the loss backward only if there was at least 2 transitions in the episode with TD error > 0
+    # there wont be any elements in action_target_list, action_list of the episode has no TD error > 0
+    if action_target_list.shape[0] >= 2:
+        if optimizer_algo == 'batch':
+            # Update parameters of actor by policy gradient
+            actor_optimizer.zero_grad()
+            # compute the gradient from the sampled log probability
+            #  the log probability times the Q of the action that you just took in that state
+
+            """Important note"""
+            # Reward scaling, this performs much better.
+            # In the general case this might not be a good idea. If there are rare events with extremely high rewards
+            # that only occur in some episodes, and the majority of episodes only experience common events with
+            # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
+            # since all the rewards are 1 itself
+            # TODO :  Doing the gradient descent on the L1 norm error, check if L2 norm or any other form has to be used here
+            multiplication_factor = action_target_list.detach() - actors_output_list
+            # TODO : Normalization was posing a numerical instability problem here, the loss would
+            # become too small– of the order of e-8, e-9
+            # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
+            # TODO : The updates should be of size proportional to the variance reduction
+            loss2 = mse_loss(input=action_target_list, target=actors_output_list)
+            loss2.backward()
+            running_loss2_mean += loss2.item()
+            actor_optimizer.step()
+
+    loss1_history.append(running_loss1_mean/episode_timestep)
+    loss2_history.append(running_loss2_mean/episode_timestep)
+    running_loss1_mean = 0
+    running_loss2_mean = 0
+
+    avg_history['episodes'].append(episode_i + 1)
+    avg_history['timesteps'].append(episode_timestep)
+    avg_history['reward'].append(episode_reward)
+
+    actor_scheduler.step()
+    critic_scheduler.step()
+
+    if (episode_i + 1) % agg_interval == 0:
+        print('Episode : ', episode_i+1,
+              # 'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
+              'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
+              'Avg Timestep : ', avg_history['timesteps'][-1], 'Avg Reward : ',avg_history['reward'][-1])
+
+# In[]:
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 7))
+plt.subplots_adjust(wspace=0.5)
+axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
+axes[0][0].set_title('Timesteps per episode')
+axes[0][0].set_ylabel('Timesteps')
+axes[0][1].plot(avg_history['episodes'], avg_history['reward'])
+axes[0][1].set_title('Reward per episode')
+axes[0][1].set_ylabel('Reward')
+axes[1][0].set_title('Critic Loss')
+axes[1][0].plot(loss1_history)
+axes[1][1].set_title('Actor Objective')
+axes[1][1].plot(loss2_history)
+
 plt.show()
 
-# def perform_generalized_policy_iteration():
-#     global print_epoch, gamma, NUM_ACTIONS, NUM_STATES, Q, \
-#         policy_matrix, running_mean_matrix, MAX_EPISODE_LENGTH, env, all_episode_lists
-#
-#     epoch = 0
-#     gamma = 0.9
-#
-#     while True:
-#         epoch += 1
-#         episode_list = list()
-#         observation = env.reset(exploring_starts=True)
-#         # observation is the current state and the current value
-#         # which the agent observes
-#
-#         done = False
-#         # max length of each episode is 1000
-#         for _ in range(MAX_EPISODE_LENGTH):
-#             action = policy_matrix[observation[0]]
-#
-#             # Move one step and get a new observation and the reward
-#             new_state, new_value, reward, done = env.step(action)
-#             new_observation = [new_state, new_value]
-#
-#             # append what had you observed, and what action did you take resulting in what reward
-#             episode_list.append((observation, action, reward))
-#             observation = new_observation
-#             if done:
-#                 break
-#
-#         # For debugging
-#         all_episode_lists.append(episode_list)
-#
-#         # This cycle is the implementation of First-Visit MC.
-#         first_visit_done = np.zeros((NUM_ACTIONS, NUM_STATES))
-#         counter = 0
-#         # For each state-action stored in the episode list it checks if
-#         # it is the first visit and then estimates the return.
-#         # This is the Evaluation step of the GPI.
-#         old_state_action_matrix = Q.copy()
-#         for visit in episode_list:
-#             state = visit[0][0]
-#             action = int(visit[1])
-#             if first_visit_done[action, state] == 0:
-#                 return_value = get_return(episode_list[counter:], gamma)
-#                 running_mean_matrix[action, state] += 1
-#                 Q[action, state] += return_value
-#                 first_visit_done[action, state] = 1
-#             counter += 1
-#         # Policy update (Improvement)
-#
-#         if has_converged(old_state_action_matrix/running_mean_matrix, Q / running_mean_matrix):
-#             break
-#
-#         policy_matrix = update_policy(episode_list, policy_matrix, Q / running_mean_matrix)
-#
-#         if epoch % print_epoch == 0:
-#             print("State-Action matrix after " + str(epoch) + " iterations:")
-#             print(Q / running_mean_matrix)
-#             print("Policy matrix after " + str(epoch + 1) + " iterations:")
-#             print(policy_matrix)
-#             describe_policy_matrix(policy_matrix, env)
-#
-#     # print("Utility matrix after " + str(N_EPOCHS) + " iterations: ")
-#     # print(state_action_matrix/running_mean_matrix)
-#     # print('Current Learnt Policy is ')
-#     # describe_policy_matrix(policy_matrix)
+# In[]:
+
+cur_state = env.reset()
+total_step = 0
+total_reward = 0.0
+done = False
+y = list()
+x = list()
+while not done:
+    x.append(env.timestep)
+    action, probs = actor.select_action(torch.Tensor([cur_state]))
+    # TODO : Verify this
+    y.append(cur_state+action)
+    next_state, reward, done, info = env.step(action.item())
+    total_reward += reward
+    total_step += 1
+    cur_state = next_state
+plt.figure()
+plt.plot(x, y)
