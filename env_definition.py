@@ -1,7 +1,5 @@
-# The Purpose of this experiment is to show that RL can even learn latent independent variables
-# of a function which the reward structure aims to approximate.
-# The latent variable here is the time t, and the output is a direct consequence of this independent
-# variable
+# The Purpose of this experiment is to show that RL can learn latent relationship between observation variables
+
 
 import numpy as np
 
@@ -25,10 +23,11 @@ class RandomVariable:
         return np.random.choice([-0.141, -0.8, 0.12, 0.5])
 
     def reset(self):
-        self.time = np.random.random()
+        # TODO : This has to start all over again with randomness
+        self.time = 0
         # return a noisy function output
         self.cur_state = self.f(self.time) + self.get_noise()
-        return self.cur_state
+        return self.time, self.cur_state
 
     def f(self, x):
         return np.sin(x)
