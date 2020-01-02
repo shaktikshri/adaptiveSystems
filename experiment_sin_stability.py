@@ -48,8 +48,12 @@ class ActorReplayBuffer:
 actor_learning_rate = 1e-2
 critic_learning_rate = 1e-2
 train_episodes = 5000
+highest = 10
+intermediate = 5
+penalty = -1
+lowest = -10
 
-env = RandomVariable()
+env = RandomVariable(highest=highest, intermediate=intermediate, penalty=penalty, lowest=lowest)
 # The actor can just output an action, since the action space is continuous now
 actor = Actor(input_size=env.observation_space.shape[0], output_size=1, hidden_size=24, continuous=True)
 
@@ -122,19 +126,21 @@ for episode_i in range(train_episodes):
     episode_timestep = 0
 
     done = False
-    cur_state = torch.Tensor([env.reset()])
+    cur_state = torch.Tensor(env.reset())
 
     actors_output_list = torch.Tensor()
     action_target_list = torch.Tensor()
     u_value_list = torch.Tensor()
     target_list = torch.Tensor()
+    reward_list = list()
 
     while not done:
         action, _ = actor.select_action(cur_state)
 
         # take action in the environment
         next_state, reward, done, info = env.step(action.item())
-        next_state = torch.Tensor([next_state])
+        next_state = torch.Tensor(next_state)
+        reward_list.append(reward)
 
         u_value = critic(cur_state)
         u_value_list = torch.cat([u_value_list, u_value])
@@ -243,12 +249,16 @@ for episode_i in range(train_episodes):
     critic_scheduler.step()
 
     if (episode_i + 1) % agg_interval == 0:
-        print('Episode : ', episode_i+1,
-              # 'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
-              'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
-              'Avg Timestep : ', avg_history['timesteps'][-1], 'Avg Reward : ',avg_history['reward'][-1])
+        print(
+            # 'Episode : ', episode_i+1,
+                # 'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
+                'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
+                #  'Timestep : ', avg_history['timesteps'][-1], 'Reward : ',avg_history['reward'][-1])
+                'Hits : ', reward_list.count(highest), ' PHits : ', reward_list.count(intermediate),
+                'Timestep : ', avg_history['timesteps'][-1]
+        )
 
-# In[]:
+        # In[]:
 import matplotlib.pyplot as plt
 
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 7))
@@ -276,7 +286,7 @@ y = list()
 x = list()
 while not done:
     x.append(env.timestep)
-    action, probs = actor.select_action(torch.Tensor([cur_state]))
+    action, probs = actor.select_action(torch.Tensor(cur_state))
     # TODO : Verify this
     y.append(cur_state+action)
     next_state, reward, done, info = env.step(action.item())

@@ -27,7 +27,7 @@ class RandomVariable:
         self.time = 0
         # return a noisy function output
         self.cur_state = self.f(self.time) + self.get_noise()
-        return self.time, self.cur_state
+        return np.array([self.time, self.cur_state])
 
     def f(self, x):
         return np.sin(x)
@@ -48,4 +48,4 @@ class RandomVariable:
         # Thus reward directly depends on how good the approximation was
         self.time = (self.time + self.timestep) % self.max_time
         self.cur_state = self.f(self.time) + self.get_noise()
-        return self.cur_state, reward, done, 'info'
+        return np.array([self.time, self.cur_state]), reward, done, 'info'
