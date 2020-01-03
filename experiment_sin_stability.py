@@ -81,7 +81,7 @@ critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
 
 
 gamma = 0.99
-avg_history = {'episodes': [], 'timesteps':[], 'reward': []}
+avg_history = {'episodes': [], 'timesteps':[], 'reward': [], 'hits percentage' : []}
 agg_interval = 10
 running_loss1_mean = 0
 running_loss2_mean = 0
@@ -244,6 +244,7 @@ for episode_i in range(train_episodes):
     avg_history['episodes'].append(episode_i + 1)
     avg_history['timesteps'].append(episode_timestep)
     avg_history['reward'].append(episode_reward)
+    avg_history['hits percentage'].append((reward_list.count(intermediate) + reward_list.count(highest))/len(reward_list))
 
     actor_scheduler.step()
     critic_scheduler.step()
@@ -254,8 +255,8 @@ for episode_i in range(train_episodes):
                 # 'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
                 'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
                 #  'Timestep : ', avg_history['timesteps'][-1], 'Reward : ',avg_history['reward'][-1])
-                'Hits : ', reward_list.count(highest), ' PHits : ', reward_list.count(intermediate),
-                'Timestep : ', avg_history['timesteps'][-1]
+                'Hits : ', avg_history['hits percentage'][-1],
+                # 'Timestep : ', avg_history['timesteps'][-1]
         )
 
         # In[]:

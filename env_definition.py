@@ -1,6 +1,3 @@
-# The Purpose of this experiment is to show that RL can learn latent relationship between observation variables
-
-
 import numpy as np
 
 
@@ -10,7 +7,7 @@ class RandomVariable:
         self.time = 0
         self.timestep = 0.5
         self.cur_state = self.f(self.time) # the function is currently in one dimension, we can raise this dimension
-        self.observation_space = np.array(1).reshape(-1)
+        self.observation_space = np.array([1,2]).reshape(-1)
         self.action_space = np.array(1).reshape(-1)
         self.highest = highest
         self.intermediate = intermediate
@@ -19,8 +16,9 @@ class RandomVariable:
         self.max_time = 2*np.pi
 
     def get_noise(self):
-        # TODO: Replace this with a gaussian, np.random.normal(0, 0.1)
-        return np.random.choice([-0.141, -0.8, 0.12, 0.5])
+        # make noise as a function of time, or some unique mapping.
+        # TODO : sample this from a gaussian centered at self.time
+        return [0.1, 0.5, -0.3, -0.5][int(self.time // 2)]
 
     def reset(self):
         # TODO : This has to start all over again with randomness
@@ -49,3 +47,16 @@ class RandomVariable:
         self.time = (self.time + self.timestep) % self.max_time
         self.cur_state = self.f(self.time) + self.get_noise()
         return np.array([self.time, self.cur_state]), reward, done, 'info'
+
+
+# testing the noise functionality
+import matplotlib.pyplot as plt
+env = RandomVariable(10, 5, -1, -5)
+env.reset()
+array1 = list()
+array2 = list()
+for el in range(100):
+    out, _, _, _ = env.step(0)
+    array1.append(out[0])
+    array2.append(out[1])
+plt.scatter(array1, array2)
