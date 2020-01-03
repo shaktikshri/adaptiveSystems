@@ -14,6 +14,7 @@ class RandomVariable:
         self.lowest = lowest
         self.penalty = penalty
         self.max_time = 2*np.pi
+        self.counter = 0
 
     def get_noise(self):
         # make noise as a function of time, or some unique mapping.
@@ -31,32 +32,37 @@ class RandomVariable:
         return np.sin(x)
 
     def step(self, action):
-        difference = np.abs(self.f(self.time) - (self.cur_state + action))
-        done = False
-        if difference <= 0.01:
-            reward = self.highest
-        elif difference <= 0.1:
-            reward = self.intermediate
-        elif difference <= 0.7:
-            reward = self.penalty
-        # a max deviation between -0.1 to +0.1 is tolerated, after that the episode ends
-        else:
+        self.counter += 1
+        if self.counter >= 200:
             reward = self.lowest
             done = True
-        # Thus reward directly depends on how good the approximation was
-        self.time = (self.time + self.timestep) % self.max_time
-        self.cur_state = self.f(self.time) + self.get_noise()
+        else:
+            difference = np.abs(self.f(self.time) - (self.cur_state + action))
+            done = False
+            if difference <= 0.01:
+                reward = self.highest
+            elif difference <= 0.1:
+                reward = self.intermediate
+            elif difference <= 0.7:
+                reward = self.penalty
+            # a max deviation between -0.1 to +0.1 is tolerated, after that the episode ends
+            else:
+                reward = self.lowest
+                done = True
+            # Thus reward directly depends on how good the approximation was
+            self.time = (self.time + self.timestep) % self.max_time
+            self.cur_state = self.f(self.time) + self.get_noise()
         return np.array([self.time, self.cur_state]), reward, done, 'info'
 
 
-# testing the noise functionality
-import matplotlib.pyplot as plt
-env = RandomVariable(10, 5, -1, -5)
-env.reset()
-array1 = list()
-array2 = list()
-for el in range(100):
-    out, _, _, _ = env.step(0)
-    array1.append(out[0])
-    array2.append(out[1])
-plt.scatter(array1, array2)
+# # testing the noise functionality
+# import matplotlib.pyplot as plt
+# env = RandomVariable(10, 5, -1, -5)
+# env.reset()
+# array1 = list()
+# array2 = list()
+# for el in range(100):
+#     out, _, _, _ = env.step(0)
+#     array1.append(out[0])
+#     array2.append(out[1])
+# plt.scatter(array1, array2)
