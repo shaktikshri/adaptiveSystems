@@ -9,6 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from actor_critic_structure import Actor, Critic
 from copy import deepcopy
 from env_definition import RandomVariable
+import json
 
 # In[]:
 
@@ -258,6 +259,8 @@ for episode_i in range(train_episodes):
                 'Hits : ', avg_history['hits percentage'][-1],
                 'Timestep : ', avg_history['timesteps'][-1]
         )
+        # Dump data every 10 episodes
+        json.dump(avg_history, fp=open('data_experiment(1).json', 'w'))
 
         # In[]:
 import matplotlib.pyplot as plt
