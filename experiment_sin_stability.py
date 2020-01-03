@@ -256,7 +256,7 @@ for episode_i in range(train_episodes):
                 'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
                 #  'Timestep : ', avg_history['timesteps'][-1], 'Reward : ',avg_history['reward'][-1])
                 'Hits : ', avg_history['hits percentage'][-1],
-                # 'Timestep : ', avg_history['timesteps'][-1]
+                'Timestep : ', avg_history['timesteps'][-1]
         )
 
         # In[]:
@@ -267,9 +267,9 @@ plt.subplots_adjust(wspace=0.5)
 axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
 axes[0][0].set_title('Timesteps per episode')
 axes[0][0].set_ylabel('Timesteps')
-axes[0][1].plot(avg_history['episodes'], avg_history['reward'])
-axes[0][1].set_title('Reward per episode')
-axes[0][1].set_ylabel('Reward')
+axes[0][1].plot(avg_history['episodes'], avg_history['hits percentage'])
+axes[0][1].set_title('Hits+Partial Hits per episode')
+axes[0][1].set_ylabel('Hits')
 axes[1][0].set_title('Critic Loss')
 axes[1][0].plot(loss1_history)
 axes[1][1].set_title('Actor Objective')

@@ -24,6 +24,7 @@ class RandomVariable:
     def reset(self):
         # TODO : This has to start all over again with randomness
         self.time = 0
+        self.counter = 0
         # return a noisy function output
         self.cur_state = self.f(self.time) + self.get_noise()
         return np.array([self.time, self.cur_state])
