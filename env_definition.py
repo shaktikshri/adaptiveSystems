@@ -45,10 +45,8 @@ class RandomVariable:
                 reward = self.intermediate
             elif difference <= 0.7:
                 reward = self.penalty
-            # a max deviation between -0.1 to +0.1 is tolerated, after that the episode ends
             else:
                 reward = self.lowest
-                done = True
             # Thus reward directly depends on how good the approximation was
             self.time = (self.time + self.timestep) % self.max_time
             self.cur_state = self.f(self.time) + self.get_noise()
