@@ -259,17 +259,15 @@ for episode_i in range(train_episodes):
                 'Hits : ', avg_history['hits percentage'][-1],
                 'Timestep : ', avg_history['timesteps'][-1]
         )
-        # Dump data every 10 episodes
-        json.dump(avg_history, fp=open('data_experiment(1).json', 'w'))
 
         # In[]:
 import matplotlib.pyplot as plt
 
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 7))
 plt.subplots_adjust(wspace=0.5)
-axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
-axes[0][0].set_title('Timesteps per episode')
-axes[0][0].set_ylabel('Timesteps')
+# axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
+# axes[0][0].set_title('Timesteps per episode')
+# axes[0][0].set_ylabel('Timesteps')
 axes[0][1].plot(avg_history['episodes'], avg_history['hits percentage'])
 axes[0][1].set_title('Hits+Partial Hits per episode')
 axes[0][1].set_ylabel('Hits')
@@ -286,16 +284,23 @@ cur_state = env.reset()
 total_step = 0
 total_reward = 0.0
 done = False
-y = list()
+y1 = list()
+y2 = list()
 x = list()
 while not done:
-    x.append(env.timestep)
+    x.append(cur_state[0])
     action, probs = actor.select_action(torch.Tensor(cur_state))
-    # TODO : Verify this
-    y.append(cur_state+action)
+    y1.append(cur_state[1]+action.item())
+    y2.append(cur_state[1])
     next_state, reward, done, info = env.step(action.item())
     total_reward += reward
     total_step += 1
     cur_state = next_state
-plt.figure()
-plt.plot(x, y)
+fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 7))
+plt.subplots_adjust(wspace=0.5)
+axes[0].scatter(x, y2)
+axes[0].set_title('Original')
+axes[1].scatter(x, y1)
+axes[1].set_title('Corrected')
+
+plt.show()

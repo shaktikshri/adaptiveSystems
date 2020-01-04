@@ -48,5 +48,15 @@ A gaussian exploration was used. The Actor was trained in a full batch mode, the
 ![CACLA](RL_Benchmarks/fig4.png)
 It is worth appreciating the reduction in Actor's variance over time and the corresponding increase in the timesteps.
 
-<br>
-As always, if you'd like to know more about this research feel free to drop me an email.
+##Preliminary Results
+I ran an experiment where a noisy sin function was to be stabilised. The noise came from 
+a another time dependent function with 4 unique levels. The environment is defined in [env_definition.py](env_definition.py).
+This can be interpreted as a function filtering from a convolution. The file [experiment_sin_stability.py](experiment_sin_stability)
+gives the continuous actor critic learning algorithm we used here. The following results were obtained,
+![Training_status](figures/prelim_results2.png)
+<br><br>The hits+partial hits were the percentage of points in the domain where the algorithm brought the noisy curve within [-0.1, +0.1] deviation of the actual value
+after correction. A maximum hit of 75.5% was observed.
+![prelim_results](figures/prelim_results1.png)
+<br><br>
+The original curve is the one observed with convolution, the corrected one if the one which the agent gives out 
+after correction.
