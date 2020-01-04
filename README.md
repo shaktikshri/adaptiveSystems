@@ -49,6 +49,8 @@ A gaussian exploration was used. The Actor was trained in a full batch mode, the
 It is worth appreciating the reduction in Actor's variance over time and the corresponding increase in the timesteps.
 
 ##Preliminary Results
+
+
 I ran an experiment where a noisy sin function was to be stabilised. The noise came from 
 a another time dependent function with 4 unique levels. The environment is defined in [env_definition.py](env_definition.py).
 This can be interpreted as a function filtering from a convolution. The file [experiment_sin_stability.py](experiment_sin_stability)
