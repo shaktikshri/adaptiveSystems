@@ -36,23 +36,21 @@ class RandomVariable:
 
     def step(self, action):
         self.counter += 1
+        done = False
         if self.counter >= 200:
-            reward = self.lowest
             done = True
+        difference = np.abs(self.f(self.time) - (self.cur_state + action))
+        if difference <= 0.01:
+            reward = self.highest
+        elif difference <= 0.1:
+            reward = self.intermediate
+        elif difference <= 0.7:
+            reward = self.penalty
         else:
-            difference = np.abs(self.f(self.time) - (self.cur_state + action))
-            done = False
-            if difference <= 0.01:
-                reward = self.highest
-            elif difference <= 0.1:
-                reward = self.intermediate
-            elif difference <= 0.7:
-                reward = self.penalty
-            else:
-                reward = self.lowest
-            # Thus reward directly depends on how good the approximation was
-            self.time = (self.time + self.timestep) % self.max_time
-            self.cur_state = self.f(self.time) + self.get_noise()
+            reward = self.lowest
+        # Thus reward directly depends on how good the approximation was
+        self.time = (self.time + self.timestep) % self.max_time
+        self.cur_state = self.f(self.time) + self.get_noise()
         return np.array([self.time, self.cur_state]), reward, done, 'info'
 
 
