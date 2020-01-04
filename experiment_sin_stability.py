@@ -1,15 +1,15 @@
 import torch
 import torch.optim as optim
 from dqn import ReplayBuffer
-from torch.distributions import Categorical
+# from torch.distributions import Categorical
 from torch.nn.functional import mse_loss
 import numpy as np
-from torch.optim.lr_scheduler import StepLR
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+# from torch.optim.lr_scheduler import StepLR
+# from torch.optim.lr_scheduler import ReduceLROnPlateau
 from actor_critic_structure import Actor, Critic
 from copy import deepcopy
 from env_definition import RandomVariable
-import json
+# import json
 
 # In[]:
 
@@ -46,11 +46,12 @@ class ActorReplayBuffer:
 
 # In[]:
 
-actor_learning_rate = 1e-2
-critic_learning_rate = 1e-2
-train_episodes = 5000
+actor_learning_rate = 1e-3
+critic_learning_rate = 1e-3
+train_episodes = 3000
+
 highest = 10
-intermediate = 5
+intermediate = 1
 penalty = -1
 lowest = -10
 
@@ -63,6 +64,7 @@ critic = Critic(input_size=env.observation_space.shape[0], output_size=1, hidden
 
 # critic_old is used for fixing the target in learning the V function
 critic_old = deepcopy(critic)
+
 copy_epoch = 100
 
 optimizer_algo = 'batch'
@@ -70,18 +72,16 @@ optimizer_algo = 'batch'
 # Critic is always optimized in batch
 critic_optimizer = optim.Adam(critic.parameters(), lr=critic_learning_rate)
 
-# actor is optimized either in batch or sgd
 if optimizer_algo == 'sgd':
     actor_optimizer = optim.SGD(actor.parameters(), lr=actor_learning_rate, momentum=0.8, nesterov=True)
 elif optimizer_algo == 'batch':
     actor_optimizer = optim.Adam(actor.parameters(), lr=actor_learning_rate)
 
-# gamma = decaying factor
-actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=1)
-critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
+# actor_scheduler = StepLR(actor_optimizer, step_size=500, gamma=1)
+# critic_scheduler = StepLR(critic_optimizer, step_size=500, gamma=1)
 
-
-gamma = 0.99
+gamma = 1 # gamma = 0 because the action you took in the current state is no way going to affect what you have to do
+# in the next state
 avg_history = {'episodes': [], 'timesteps':[], 'reward': [], 'hits percentage' : []}
 agg_interval = 10
 running_loss1_mean = 0
@@ -115,7 +115,6 @@ def update_critic(critic_old, cur_states, actions, next_states, rewards, dones):
 
 
 # In[]:
-
 # Train the network to predict actions for each of the states
 for episode_i in range(train_episodes):
 
@@ -147,40 +146,18 @@ for episode_i in range(train_episodes):
         u_value_list = torch.cat([u_value_list, u_value])
 
         # Update parameters of critic by TD(0)
-        # TODO : Use TD Lambda here and compare the performance
-
         target = reward + gamma * (1-done) * critic_old(next_state)
         target_list = torch.cat([target_list, target])
 
-        replay_buffer.add(cur_state, action, next_state, reward, done)
-        sample_transitions = replay_buffer.sample_pytorch(sample_size=32)
-        # update the critic's q approximation using the sampled transitions
-        running_loss1_mean += update_critic(critic_old, **sample_transitions)
-
-        # this section was for actor experience replay, which to my dismay performed much worse than without replay
-        # actor_replay_buffer.add(target, u_value, -log_prob)
-        # sample_objectives = actor_replay_buffer.sample(sample_size=32)
-        # actor_optimizer.zero_grad()
-        # # compute the gradient from the sampled log probability
-        # #  the log probability times the Q of the action that you just took in that state
-        # """Important note"""
-        # # Reward scaling, this performs much better.
-        # # In the general case this might not be a good idea. If there are rare events with extremely high rewards
-        # # that only occur in some episodes, and the majority of episodes only experience common events with
-        # # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
-        # # since all the rewards are 1 itself
-        # multiplication_factor = sample_objectives['target'] - sample_objectives['predicted']
-        # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / ( multiplication_factor.std(unbiased=False) + 1e-8)
-        # loss2 = torch.sum(torch.mul(sample_objectives['gradient'], multiplication_factor))  # the advantage function used is the TD error
-        # loss2.backward(retain_graph=True)
-        # running_loss2_mean += loss2.item()
-        # actor_optimizer.step()
+        # replay_buffer.add(cur_state, action, next_state, reward, done)
+        # sample_transitions = replay_buffer.sample_pytorch(sample_size=32)
+        # # update the critic's q approximation using the sampled transitions
+        # running_loss1_mean += update_critic(critic_old, **sample_transitions)
 
         if target - u_value > 0:
             if optimizer_algo == 'sgd':
                 # Update parameters of actor by ACLA
                 td_error = target - u_value
-                # TODO : Instead of runing a loop here, multiply this with the loss2 there while updating
                 running_variance = running_variance*(1-beta) + beta*torch.pow(td_error, 2)
                 # no. of updates to this action should be equal to floor(TD Error / std_dev of TD error) as per the
                 # original paper in Hasselt and Wiering
@@ -201,15 +178,13 @@ for episode_i in range(train_episodes):
         episode_timestep += 1
         cur_state = next_state
 
-    # # # TODO : Remove this if it doesnt improve the convergence
-    # critic_optimizer.zero_grad()
-    # # # TODO : Check if removing scaling improves anything
-    # u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
-    # target_list_copy = (target_list - target_list.mean()) / target_list.std()
-    # loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy.detach())
-    # loss1.backward(retain_graph=True)
-    # running_loss1_mean += loss1.item()
-    # critic_optimizer.step()
+    critic_optimizer.zero_grad()
+    u_value_list_copy = (u_value_list - u_value_list.mean()) / u_value_list.std()
+    target_list_copy = (target_list - target_list.mean()) / target_list.std()
+    loss1 = mse_loss(input=u_value_list_copy, target=target_list_copy.detach())
+    loss1.backward(retain_graph=True)
+    running_loss1_mean += loss1.item()
+    critic_optimizer.step()
 
     # Do the loss backward only if there was at least 2 transitions in the episode with TD error > 0
     # there wont be any elements in action_target_list, action_list of the episode has no TD error > 0
@@ -217,20 +192,6 @@ for episode_i in range(train_episodes):
         if optimizer_algo == 'batch':
             # Update parameters of actor by policy gradient
             actor_optimizer.zero_grad()
-            # compute the gradient from the sampled log probability
-            #  the log probability times the Q of the action that you just took in that state
-
-            """Important note"""
-            # Reward scaling, this performs much better.
-            # In the general case this might not be a good idea. If there are rare events with extremely high rewards
-            # that only occur in some episodes, and the majority of episodes only experience common events with
-            # lower-scale rewards, then this trick will mess up training. In cartpole environment this is not of concern
-            # since all the rewards are 1 itself
-            # TODO :  Doing the gradient descent on the L1 norm error, check if L2 norm or any other form has to be used here
-            multiplication_factor = action_target_list.detach() - actors_output_list
-            # TODO : Normalization was posing a numerical instability problem here, the loss would
-            # become too small– of the order of e-8, e-9
-            # multiplication_factor = (multiplication_factor - multiplication_factor.mean() ) / multiplication_factor.std()
             # TODO : The updates should be of size proportional to the variance reduction
             loss2 = mse_loss(input=action_target_list, target=actors_output_list)
             loss2.backward()
@@ -242,17 +203,16 @@ for episode_i in range(train_episodes):
     running_loss1_mean = 0
     running_loss2_mean = 0
 
-    avg_history['episodes'].append(episode_i + 1)
     avg_history['timesteps'].append(episode_timestep)
     avg_history['reward'].append(episode_reward)
     avg_history['hits percentage'].append((reward_list.count(intermediate) + reward_list.count(highest))/len(reward_list))
 
-    actor_scheduler.step()
-    critic_scheduler.step()
+    # actor_scheduler.step()
+    # critic_scheduler.step()
 
     if (episode_i + 1) % agg_interval == 0:
         print(
-            # 'Episode : ', episode_i+1,
+              'Episode : ', episode_i+1,
                 # 'actor lr : ', actor_scheduler.get_lr(), 'critic lr : ', critic_scheduler.get_lr(),
                 'Actor Loss : ', loss2_history[-1], 'Critic Loss : ', loss1_history[-1],
                 #  'Timestep : ', avg_history['timesteps'][-1], 'Reward : ',avg_history['reward'][-1])
@@ -260,23 +220,19 @@ for episode_i in range(train_episodes):
                 'Timestep : ', avg_history['timesteps'][-1]
         )
 
-        # In[]:
+# In[]:
+
 import matplotlib.pyplot as plt
 
-fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 7))
+fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(12, 7))
 plt.subplots_adjust(wspace=0.5)
-# axes[0][0].plot(avg_history['episodes'], avg_history['timesteps'])
-# axes[0][0].set_title('Timesteps per episode')
-# axes[0][0].set_ylabel('Timesteps')
-axes[0][1].plot(avg_history['episodes'], avg_history['hits percentage'])
-axes[0][1].set_title('Hits+Partial Hits per episode')
-axes[0][1].set_ylabel('Hits')
-axes[1][0].set_title('Critic Loss')
-axes[1][0].plot(loss1_history)
-axes[1][1].set_title('Actor Objective')
-axes[1][1].plot(loss2_history)
-
-plt.show()
+axes[0].plot(avg_history['hits percentage'])
+axes[0].set_title('Hits+Partial Hits per episode')
+axes[0].set_ylabel('Hits')
+axes[1].set_title('Critic Loss')
+axes[1].plot(loss1_history)
+axes[2].set_title('Actor Objective')
+axes[2].plot(loss2_history)
 
 # In[]:
 
