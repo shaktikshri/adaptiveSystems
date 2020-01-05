@@ -1,21 +1,30 @@
-# this is learning reward function from a sampled trajectory, which will be the case in our
-# interaction with engineers during demonstration by expert
+# this is learning reward function from a sampled trajectory
 
-from env_definition import RandomVariable
+
 import numpy as np
 
-env = RandomVariable(highest=10, intermediate=5, lowest=-5, penalty=-10)
-policy = list()
-for episodes in range(100):
-    done = False
-    cur_state = env.reset()
-    while not done:
-        # we need to construct the optimal policy, so need to append the state action pair for all
-        # possible states here
-        action = -1*[0.1, 0.5, -0.3, -0.5][int(env.time // 2)]
-        policy.append([cur_state, action])
-        next_state, _, done, _ = env.step(action)
-        cur_state = next_state
-
-import matplotlib.pyplot as plt
-plt.scatter([el[0][0] for el in policy], [el[0][1]+el[1] for el in policy])
+# constructing a 5*5 gridworld as put by Andrew and Russel in Inverse Reinforcement Learning
+# state is continuous [0,1]*[0,1]
+cur_state = np.random.rand(2)
+class Agent:
+    def __init__(self):
+        self.cur_state = np.random.rand(2)
+    def step(self, action):
+        assert action in [0, 1, 2, 3]
+        # UP is 0, RIGHT 1, DOWN 2, LEFT 3
+        if action == 0:
+            step_size = np.array([0, 0.2])
+        elif action == 1:
+            step_size = np.array([0.2, 0])
+        elif action == 2:
+            step_size = np.array([0, -0.2])
+        else:
+            step_size = np.array([-0.2, 0])
+        # whenever an action is performed, the guy moves in that direction and then a uniform noise from [-0.1, 0.1]
+        # is added in each of the coordinates
+        self.cur_state = self.cur_state + step_size + \
+                         np.array([(2*np.random.rand() - 1)/10, (2*np.random.rand() - 1)/10])
+        # Truncate the state to be in [0,1]*[0,1]
+        self.cur_state[self.cur_state > 1] = 1
+        self.cur_state[self.cur_state < 0] = 0
+        return self.cur_state
