@@ -28,3 +28,19 @@ class Agent:
         self.cur_state[self.cur_state > 1] = 1
         self.cur_state[self.cur_state < 0] = 0
         return self.cur_state
+
+"""
+Remember whenever you're in lack of domain for basis functions, you can always take the domain to be the same
+as the domain of the state space. And as always, Gaussian Mixtures are the best choice for basis functions
+"""
+# generate evenly spaced 15*15 2d gaussian over the state space
+cov = [[0.1, 0],[0, 0.1]]
+std = 0.1
+mean = np.arange(0, 1, 1/15)
+from scipy.stats import multivariate_normal
+
+basis = np.array([])
+for i in range(15):
+    for j in range(15):
+        basis = np.append(basis, multivariate_normal(mean=[mean[i], mean[j]], cov=cov))
+basis = basis.reshape(15, 15)
