@@ -46,13 +46,15 @@ std = 0.1
 mean = np.arange(0, 1, 1/15)
 from scipy.stats import multivariate_normal
 
-basis = np.array([])
+basis_functions = np.array([])
 for i in range(15):
     for j in range(15):
-        basis = np.append(basis, multivariate_normal(mean=[mean[i], mean[j]], cov=cov))
-basis = basis.reshape(15, 15)
+        basis_functions = np.append(basis_functions, multivariate_normal(mean=[mean[i], mean[j]], cov=cov))
+basis_functions = basis_functions.reshape(15, 15)
+# TODO : Sanity check this, is this implementation correct ?
+basis_functions = basis_functions.reshape(-1)
 
-reward_function = lambda state: 1 if np.all(state >= np.array([0.8, 0.8])) else 0
+true_reward_function = lambda state: 1 if np.all(state >= np.array([0.8, 0.8])) else 0
 # visualize the true reward distribution
 # from plot_functions import figure
 # x_points = np.arange(0, 1, 0.01)
@@ -72,22 +74,20 @@ Now since the state space is continuous, any method– either discretization or 
 # Using Q Learning to learn the optimal policy as per the reward distribution
 
 from dqn import DQNPolicy, ReplayBuffer
-def do_q_learning(env, reward_function):
+def do_q_learning(env, reward_function, train_episodes):
     alpha = 0.01
     gamma = 0.9
     epsilon = 0.1
     policy = DQNPolicy(env, lr=alpha, gamma=gamma, input=2, output=4)  # 4 actions output, up, right, down, left
     replay_buffer = ReplayBuffer()
-    start_episode = 0
     avg_reward = 0
     avg_timestep = 0
     # Play with a random policy and see
     # run_current_policy(env.env, policy)
-    train_episodes = 500
     agg_interval = 1
     avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
     # Train the network to predict actions for each of the states
-    for episode_i in range(start_episode, start_episode + train_episodes):
+    for episode_i in range(train_episodes):
         episode_timestep = 0
         episode_reward = 0.0
         env.__init__()
@@ -137,8 +137,56 @@ def do_q_learning(env, reward_function):
     plt.xlabel('Episode')
     plt.ylabel('Reward')
     plt.show()
+    return policy.q_model
 
-
-do_q_learning(env, reward_function)
+true_policy = do_q_learning(env, true_reward_function, 500)
+# Now you have the true policy with you
 
 # In[]:
+# Now coming to the Linear Programming part. Here we will solve the
+# optimization objective for the IRL from sampled trajectories
+
+all_policies = list()
+gamma = 0.9
+# form a random policy for now
+# cur_policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4)
+cur_policy = true_policy
+each_episode_length = 30
+env = Agent()
+
+N, un0, q = 30, 1, 0.9
+u = np.empty((N,))
+u[0] = un0
+u[1:] = q
+gamma_matrix = np.cumprod(u)
+
+def run_trajectories(env, cur_policy):
+    values_all_trajectories = list()
+    total_episodes = 5000
+    for episode in range(total_episodes):
+        if episode % 100 == 0:
+            print('Episode : ', episode)
+        done = False
+        counter = 0
+        env.cur_state = np.array([0,0]) # make sure the state is s0
+        cur_state = env.cur_state
+        trajectory = list()
+        while not done:
+            counter += 1
+            done = counter >= each_episode_length
+            # play the episode as per the latest policy
+            trajectory.append(cur_state)
+            # TODO : Sanity check this equation
+            cur_state = env.step(cur_policy.predict(cur_state.reshape(1, -1))[0].argmax())
+        # Now the trajectory is done, so find the value estimates for the different reward functions
+        # trajectory is a 30*2 matrix, we'll apply the basis functions on it
+        trajectory = np.array(trajectory)
+        # values are all the 225 value functions as per different reward basis functions
+        values = np.array([])
+        for basis in basis_functions:
+            values = np.append(values, np.dot(gamma_matrix.reshape(1, -1), basis.pdf(trajectory).reshape(-1, 1))[0][0])
+        values_all_trajectories.append(values)
+    values_all_trajectories = np.array(values_all_trajectories)
+    # values_all_trajectories is a 5000*225 array
+    state_values = values_all_trajectories.mean(axis=0)
+    return state_values
