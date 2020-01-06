@@ -7,10 +7,16 @@ import torch
 
 # Define the policy and replay buffer
 class DQNPolicy:
-    def __init__(self, env, lr, gamma, hidden_dim=24):
+    def __init__(self, env, lr, gamma, hidden_dim=24, input=None, output=None):
         self.env = env
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.n
+        if input is None:
+            self.state_dim = env.observation_space.shape[0]
+        else:
+            self.state_dim = input
+        if output is None:
+            self.action_dim = env.action_space.n
+        else:
+            self.action_dim = output
         self.lr = lr
         self.hidden_dim = hidden_dim
         self.gamma = gamma
