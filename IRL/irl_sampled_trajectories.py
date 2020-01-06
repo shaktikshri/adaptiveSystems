@@ -1,5 +1,6 @@
 # this is learning reward function from a sampled trajectory
 import numpy as np
+import matplotlib.pyplot as plt
 
 # In[]:
 
@@ -71,65 +72,73 @@ Now since the state space is continuous, any method– either discretization or 
 # Using Q Learning to learn the optimal policy as per the reward distribution
 
 from dqn import DQNPolicy, ReplayBuffer
-from plot_functions import plot_timesteps_and_rewards
-alpha = 0.01
-gamma = 0.9
-epsilon = 0.1
-policy = DQNPolicy(env, lr=alpha, gamma=gamma, input=1, output=4) # 4 actions output, up, right, down, left
-replay_buffer = ReplayBuffer()
-start_episode = 0
-avg_reward = 0
-avg_timestep = 0
-# Play with a random policy and see
-# run_current_policy(env.env, policy)
-train_episodes = 200
-agg_interval = 10
-avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
-# Train the network to predict actions for each of the states
-for episode_i in range(start_episode, start_episode + train_episodes):
-    episode_timestep = 0
-    episode_reward = 0.0
-    env.__init__()
-    cur_state = env.cur_state
-    counter = 0
-    done = False
-    while not done:
-        # Let each episode be of 30 steps
-        counter += 1
-        done = counter >= 30
+def do_q_learning(env, reward_function):
+    alpha = 0.01
+    gamma = 0.9
+    epsilon = 0.1
+    policy = DQNPolicy(env, lr=alpha, gamma=gamma, input=2, output=4)  # 4 actions output, up, right, down, left
+    replay_buffer = ReplayBuffer()
+    start_episode = 0
+    avg_reward = 0
+    avg_timestep = 0
+    # Play with a random policy and see
+    # run_current_policy(env.env, policy)
+    train_episodes = 500
+    agg_interval = 1
+    avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
+    # Train the network to predict actions for each of the states
+    for episode_i in range(start_episode, start_episode + train_episodes):
+        episode_timestep = 0
+        episode_reward = 0.0
+        env.__init__()
+        # todo : the first current state should be 0
+        cur_state = env.cur_state
+        counter = 0
+        done = False
+        while not done:
+            # Let each episode be of 30 steps
+            counter += 1
+            done = counter >= 30
 
-        # todo : check if this line is working
-        action = policy.select_action(cur_state.reshape(1, -1), epsilon)
+            # todo : check if this line is working
+            action = policy.select_action(cur_state.reshape(1, -1), epsilon)
 
-        # take action in the environment
-        next_state = env.step(action)
-        reward = reward_function(next_state)
+            # take action in the environment
+            next_state = env.step(action)
+            reward = reward_function(next_state)
 
-        # add the transition to replay buffer
-        replay_buffer.add(cur_state, action, next_state, reward, done)
+            # add the transition to replay buffer
+            replay_buffer.add(cur_state, action, next_state, reward, done)
 
-        # sample minibatch of transitions from the replay buffer
-        # the sampling is done every timestep and not every episode
-        sample_transitions = replay_buffer.sample()
+            # sample minibatch of transitions from the replay buffer
+            # the sampling is done every timestep and not every episode
+            sample_transitions = replay_buffer.sample()
 
-        # update the policy using the sampled transitions
-        policy.update_policy(**sample_transitions)
+            # update the policy using the sampled transitions
+            policy.update_policy(**sample_transitions)
 
-        episode_reward += reward
-        episode_timestep += 1
+            episode_reward += reward
+            episode_timestep += 1
 
-        cur_state = next_state
+            cur_state = next_state
 
-    avg_reward += episode_reward
-    avg_timestep += episode_timestep
+        avg_reward += episode_reward
+        avg_timestep += episode_timestep
 
-    if (episode_i + 1) % agg_interval == 0:
-        avg_history['episodes'].append(episode_i + 1)
-        avg_history['timesteps'].append(avg_timestep / float(agg_interval))
-        avg_history['reward'].append(avg_reward / float(agg_interval))
-        avg_timestep = 0
-        avg_reward = 0.0
+        if (episode_i + 1) % agg_interval == 0:
+            avg_history['episodes'].append(episode_i + 1)
+            avg_history['timesteps'].append(avg_timestep / float(agg_interval))
+            avg_history['reward'].append(avg_reward / float(agg_interval))
+            avg_timestep = 0
+            avg_reward = 0.0
+            print('episode : ',episode_i+1)
+    plt.plot(avg_history['episodes'], avg_history['reward'])
+    plt.title('Reward')
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.show()
 
-plot_timesteps_and_rewards(avg_history)
+
+do_q_learning(env, reward_function)
 
 # In[]:
