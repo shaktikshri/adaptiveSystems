@@ -76,17 +76,15 @@ Now since the state space is continuous, any method– either discretization or 
 # Using Q Learning to learn the optimal policy as per the reward distribution
 
 from dqn import DQNPolicy, ReplayBuffer
-def do_q_learning(env, reward_function, train_episodes):
+def do_q_learning(env, reward_function, train_episodes, figure=False):
     alpha = 0.01
     gamma = 0.9
     epsilon = 0.1
     policy = DQNPolicy(env, lr=alpha, gamma=gamma, input=2, output=4)  # 4 actions output, up, right, down, left
     replay_buffer = ReplayBuffer()
-    avg_reward = 0
-    avg_timestep = 0
     # Play with a random policy and see
     # run_current_policy(env.env, policy)
-    agg_interval = 1
+    agg_interval = 100
     avg_history = {'episodes': [], 'timesteps': [], 'reward': []}
     # Train the network to predict actions for each of the states
     for episode_i in range(train_episodes):
@@ -124,24 +122,25 @@ def do_q_learning(env, reward_function, train_episodes):
 
             cur_state = next_state
 
-        avg_reward += episode_reward
-        avg_timestep += episode_timestep
+        avg_history['episodes'].append(episode_i + 1)
+        avg_history['timesteps'].append(episode_timestep)
+        avg_history['reward'].append(episode_reward)
 
         if (episode_i + 1) % agg_interval == 0:
-            avg_history['episodes'].append(episode_i + 1)
-            avg_history['timesteps'].append(avg_timestep / float(agg_interval))
-            avg_history['reward'].append(avg_reward / float(agg_interval))
-            avg_timestep = 0
-            avg_reward = 0.0
-            print('episode : ',episode_i+1)
-    plt.plot(avg_history['episodes'], avg_history['reward'])
-    plt.title('Reward')
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.show()
+            print('episode : ', episode_i+1)
+
+    if figure:
+        plt.plot(avg_history['episodes'], avg_history['reward'])
+        plt.title('Reward')
+        plt.xlabel('Episode')
+        plt.ylabel('Reward')
+        plt.show()
     return policy.q_model
 
-true_policy = do_q_learning(env, true_reward_function, 500)
+# In[]:
+
+# Get the true policy
+true_policy = do_q_learning(env, true_reward_function, 500, figure=True)
 # Now you have the true policy with you
 
 # In[]:
@@ -166,6 +165,7 @@ gamma_matrix = np.cumprod(u)
 
 list_of_values_per_basis = np.empty((0, basis_functions.shape[0]))
 
+# In[]:
 
 def run_trajectories(cur_policy):
     env = Agent()
@@ -199,12 +199,14 @@ def run_trajectories(cur_policy):
     values_per_basis = values_all_trajectories.mean(axis=0)
     return values_per_basis
 
+# In[]:
+
 true_values_per_basis = run_trajectories(true_policy) # it is the value of state(0,0) as per the best policy
 # true_values_per_basis is a (225,) vector
 policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4)
 
 # Do the inductive step again and again
-for iterations in range(20):
+for iterations in range(1):
     list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy.q_model).reshape(1, -1), axis=0)
     # it is the value of state(0,0) as per the candidate policies
     # list_of_values_per_basis is a K*225 dimensional matrix where K is the number of candidate policies
@@ -237,8 +239,19 @@ for iterations in range(20):
     found_reward = lambda state: np.sum([found_alphas[el]*basis_functions[el].pdf(state) for el in range(basis_functions.shape[0])])
 
     # Then get the policy as per that reward function,
-    policy = do_q_learning(env, found_reward, 5000)
+    policy = do_q_learning(env, found_reward, 500)
+    # todo : can change the number of episodes here for
+    #  learning the policy
 
     # add the policy to the list of current policies, add its value function to the list
     # this is happening in the next iteration of the loop
     # Repeat
+
+    # visualize the found reward distribution
+    from plot_functions import figure
+    x_points = np.arange(0, 1, 0.01)
+    z = np.zeros((100, 100))
+    for i in range(100):
+        for j in range(100):
+            z[i, j] = found_reward(np.array([x_points[i], x_points[j]]))
+    figure(x_points, x_points, z, title='Found reward')
