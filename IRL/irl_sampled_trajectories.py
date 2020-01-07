@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pulp import *
+from tqdm.autonotebook import tqdm
 
 
 # In[]:
@@ -126,8 +127,7 @@ def do_q_learning(env, reward_function, train_episodes, figure=False):
         avg_history['timesteps'].append(episode_timestep)
         avg_history['reward'].append(episode_reward)
 
-        if (episode_i + 1) % agg_interval == 0:
-            print('episode : ', episode_i+1)
+        learning_policy_progress.update()
 
     if figure:
         plt.plot(avg_history['episodes'], avg_history['reward'])
@@ -172,8 +172,6 @@ def run_trajectories(cur_policy):
     values_all_trajectories = list()
     total_episodes = 5000
     for episode in range(total_episodes):
-        if episode % 100 == 0:
-            print('Episode : ', episode)
         done = False
         counter = 0
         env.cur_state = np.array([0,0]) # make sure the state is s0
@@ -194,6 +192,7 @@ def run_trajectories(cur_policy):
         for basis in basis_functions:
             values = np.append(values, np.dot(gamma_matrix.reshape(1, -1), basis.pdf(trajectory).reshape(-1, 1))[0][0])
         values_all_trajectories.append(values)
+        trajectory_progress.update()
     values_all_trajectories = np.array(values_all_trajectories)
     # values_all_trajectories is a 5000*225 array
     values_per_basis = values_all_trajectories.mean(axis=0)
@@ -203,11 +202,15 @@ def run_trajectories(cur_policy):
 
 true_values_per_basis = run_trajectories(true_policy) # it is the value of state(0,0) as per the best policy
 # true_values_per_basis is a (225,) vector
-policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4)
+policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4).q_model
+
+# In[]:
 
 # Do the inductive step again and again
 for iterations in range(1):
-    list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy.q_model).reshape(1, -1), axis=0)
+    print('Running Trajectory for the policy')
+    trajectory_progress = tqdm(total=5000)
+    list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy).reshape(1, -1), axis=0)
     # it is the value of state(0,0) as per the candidate policies
     # list_of_values_per_basis is a K*225 dimensional matrix where K is the number of candidate policies
 
@@ -239,6 +242,8 @@ for iterations in range(1):
     found_reward = lambda state: np.sum([found_alphas[el]*basis_functions[el].pdf(state) for el in range(basis_functions.shape[0])])
 
     # Then get the policy as per that reward function,
+    print('Finding the optimal policy now')
+    learning_policy_progress = tqdm(total=500)
     policy = do_q_learning(env, found_reward, 500)
     # todo : can change the number of episodes here for
     #  learning the policy
@@ -246,12 +251,14 @@ for iterations in range(1):
     # add the policy to the list of current policies, add its value function to the list
     # this is happening in the next iteration of the loop
     # Repeat
+    print('Will now run trajectory for the found policy, going in the next iteration')
 
     # visualize the found reward distribution
     from plot_functions import figure
-    x_points = np.arange(0, 1, 0.01)
-    z = np.zeros((100, 100))
-    for i in range(100):
-        for j in range(100):
+    x_points = np.linspace(0, 1, 50)
+    z = np.zeros((50, 50))
+    for i in range(50):
+        print('In iteration ',i)
+        for j in range(50):
             z[i, j] = found_reward(np.array([x_points[i], x_points[j]]))
     figure(x_points, x_points, z, title='Found reward')
