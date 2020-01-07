@@ -1,6 +1,8 @@
 # this is learning reward function from a sampled trajectory
 import numpy as np
 import matplotlib.pyplot as plt
+from pulp import *
+
 
 # In[]:
 
@@ -200,27 +202,43 @@ def run_trajectories(cur_policy):
 true_values_per_basis = run_trajectories(true_policy) # it is the value of state(0,0) as per the best policy
 # true_values_per_basis is a (225,) vector
 policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4)
-list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy.q_model).reshape(1, -1), axis=0)
-# it is the value of state(0,0) as per the candidate policies
-# list_of_values_per_basis is a K*225 dimensional matrix where K is the number of candidate policies
 
-# Now need to do Linear Program
-from pulp import *
+# Do the inductive step again and again
+for iterations in range(20):
+    list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy.q_model).reshape(1, -1), axis=0)
+    # it is the value of state(0,0) as per the candidate policies
+    # list_of_values_per_basis is a K*225 dimensional matrix where K is the number of candidate policies
 
-prob = LpProblem('Sampled_Trajectory_Reward', LpMaximize)
-ALPHA = LpVariable.dicts('alpha', range(basis_functions.shape[0]))
+    # Now need to do Linear Program
+    prob = LpProblem('Sampled_Trajectory_Reward', LpMaximize)
+    ALPHA = LpVariable.dicts('alpha', range(basis_functions.shape[0]))
 
-for i in ALPHA.keys():
-    # the individual constraints on alphas
-    ALPHA[i].lowBound = -1
-    ALPHA[i].upBound = +1
+    for i in ALPHA.keys():
+        # the individual constraints on alphas
+        ALPHA[i].lowBound = -1
+        ALPHA[i].upBound = +1
 
-alphas = np.array([ALPHA[el] for el in range(basis_functions.shape[0])]).reshape(1, -1)
-# alphas is 1*225 dimensional vector, list_of_values_per_basis is a K*225 dimensional matrix
-v_s_star = np.dot(true_values_per_basis, alphas.T)
-v_s_pi = np.dot(list_of_values_per_basis, alphas.T)
-# v_s_pi is K*1 dimensional value of state s0 [s0=(0,0)] as per the candidate policies
+    alphas = np.array([ALPHA[el] for el in range(basis_functions.shape[0])]).reshape(1, -1)
+    # alphas is 1*225 dimensional vector, list_of_values_per_basis is a K*225 dimensional matrix
+    v_s_star = np.dot(true_values_per_basis, alphas.T)
+    v_s_pi = np.dot(list_of_values_per_basis, alphas.T)
+    # v_s_pi is K*1 dimensional value of state s0 [s0=(0,0)] as per the candidate policies
 
-prob += lpSum(v_s_star - v_s_pi)
+    # TODO : Need to put this as a 2*prob, and define the probability piecewise
+    prob += lpSum(v_s_star - v_s_pi)
 
-prob.solve()
+    status = prob.solve()
+    if status != 1:
+        raise Exception('Optimal alpha not found')
+    # Now you'll get the setting of the individual alphas
+    found_alphas = np.array([value(ALPHA[el]) for el in range(basis_functions.shape[0])])
+
+    # Now you need to find the reward function
+    found_reward = lambda state: np.sum([found_alphas[el]*basis_functions[el].pdf(state) for el in range(basis_functions.shape[0])])
+
+    # Then get the policy as per that reward function,
+    policy = do_q_learning(env, found_reward, 5000)
+
+    # add the policy to the list of current policies, add its value function to the list
+    # this is happening in the next iteration of the loop
+    # Repeat
