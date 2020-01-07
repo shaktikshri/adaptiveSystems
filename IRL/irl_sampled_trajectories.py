@@ -59,13 +59,13 @@ basis_functions = basis_functions.reshape(-1)
 
 true_reward_function = lambda state: 1 if np.all(state >= np.array([0.8, 0.8])) else 0
 # visualize the true reward distribution
-# from plot_functions import figure
-# x_points = np.arange(0, 1, 0.01)
-# z = np.zeros((100, 100))
-# for i in range(100):
-#     for j in range(100):
-#         z[i, j] = reward(np.array([x_points[i], x_points[j]]))
-# figure(x_points, x_points, z, title='true reward')
+from plot_functions import figure
+x_points = np.arange(0, 1, 0.01)
+z = np.zeros((100, 100))
+for i in range(100):
+    for j in range(100):
+        z[i, j] = true_reward_function(np.array([x_points[i], x_points[j]]))
+figure(x_points, x_points, z, title='true reward')
 
 env = Agent()
 
