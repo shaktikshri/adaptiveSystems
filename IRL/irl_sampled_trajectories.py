@@ -76,6 +76,9 @@ Now since the state space is continuous, any method– either discretization or 
 # Do a Q learning to learn the optimal policy for the reward structure given
 # Using Q Learning to learn the optimal policy as per the reward distribution
 
+learning_policy_progress = tqdm(total=500)
+trajectory_progress = tqdm(total=5000)
+
 from dqn import DQNPolicy, ReplayBuffer
 def do_q_learning(env, reward_function, train_episodes, figure=False):
     alpha = 0.01
@@ -208,7 +211,7 @@ policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4).q_model
 
 # Do the inductive step again and again
 for iterations in range(1):
-    print('Running Trajectory for the policy')
+    # print('Running Trajectory for the policy')
     trajectory_progress = tqdm(total=5000)
     list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy).reshape(1, -1), axis=0)
     # it is the value of state(0,0) as per the candidate policies
@@ -242,7 +245,7 @@ for iterations in range(1):
     found_reward = lambda state: np.sum([found_alphas[el]*basis_functions[el].pdf(state) for el in range(basis_functions.shape[0])])
 
     # Then get the policy as per that reward function,
-    print('Finding the optimal policy now')
+    # print('Finding the optimal policy now')
     learning_policy_progress = tqdm(total=500)
     policy = do_q_learning(env, found_reward, 500)
     # todo : can change the number of episodes here for
@@ -251,14 +254,14 @@ for iterations in range(1):
     # add the policy to the list of current policies, add its value function to the list
     # this is happening in the next iteration of the loop
     # Repeat
-    print('Will now run trajectory for the found policy, going in the next iteration')
+    # print('Will now run trajectory for the found policy, going in the next iteration')
 
     # visualize the found reward distribution
     from plot_functions import figure
     x_points = np.linspace(0, 1, 50)
     z = np.zeros((50, 50))
     for i in range(50):
-        print('In iteration ',i)
+        # print('In iteration ',i)
         for j in range(50):
             z[i, j] = found_reward(np.array([x_points[i], x_points[j]]))
     figure(x_points, x_points, z, title='Found reward')
