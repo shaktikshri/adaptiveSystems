@@ -146,6 +146,8 @@ true_policy = do_q_learning(env, true_reward_function, 500)
 # Now coming to the Linear Programming part. Here we will solve the
 # optimization objective for the IRL from sampled trajectories
 
+# first form the trajectories as per the given policy
+
 all_policies = list()
 gamma = 0.9
 # form a random policy for now
@@ -160,7 +162,11 @@ u[0] = un0
 u[1:] = q
 gamma_matrix = np.cumprod(u)
 
-def run_trajectories(env, cur_policy):
+list_of_values_per_basis = np.empty((0, basis_functions.shape[0]))
+
+
+def run_trajectories(cur_policy):
+    env = Agent()
     values_all_trajectories = list()
     total_episodes = 5000
     for episode in range(total_episodes):
@@ -188,5 +194,33 @@ def run_trajectories(env, cur_policy):
         values_all_trajectories.append(values)
     values_all_trajectories = np.array(values_all_trajectories)
     # values_all_trajectories is a 5000*225 array
-    state_values = values_all_trajectories.mean(axis=0)
-    return state_values
+    values_per_basis = values_all_trajectories.mean(axis=0)
+    return values_per_basis
+
+true_values_per_basis = run_trajectories(true_policy) # it is the value of state(0,0) as per the best policy
+# true_values_per_basis is a (225,) vector
+policy = DQNPolicy(env, 0.01, 0.9, input=2, output=4)
+list_of_values_per_basis = np.append(list_of_values_per_basis, run_trajectories(policy.q_model).reshape(1, -1), axis=0)
+# it is the value of state(0,0) as per the candidate policies
+# list_of_values_per_basis is a K*225 dimensional matrix where K is the number of candidate policies
+
+# Now need to do Linear Program
+from pulp import *
+
+prob = LpProblem('Sampled_Trajectory_Reward', LpMaximize)
+ALPHA = LpVariable.dicts('alpha', range(basis_functions.shape[0]))
+
+for i in ALPHA.keys():
+    # the individual constraints on alphas
+    ALPHA[i].lowBound = -1
+    ALPHA[i].upBound = +1
+
+alphas = np.array([ALPHA[el] for el in range(basis_functions.shape[0])]).reshape(1, -1)
+# alphas is 1*225 dimensional vector, list_of_values_per_basis is a K*225 dimensional matrix
+v_s_star = np.dot(true_values_per_basis, alphas.T)
+v_s_pi = np.dot(list_of_values_per_basis, alphas.T)
+# v_s_pi is K*1 dimensional value of state s0 [s0=(0,0)] as per the candidate policies
+
+prob += lpSum(v_s_star - v_s_pi)
+
+prob.solve()
